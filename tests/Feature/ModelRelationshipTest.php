@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Actions\CompanyEmployeeAttachAction;
 use App\Actions\EmployeeProjectAssignAction;
+use App\Data\CompanyEmployeeData;
+use App\Data\EmployeeProjectData;
 use App\Models\Company;
 use App\Models\Employee;
 use App\Models\Project;
@@ -21,7 +23,7 @@ class ModelRelationshipTest extends TestCase
         $company = Company::factory()->create();
         $employee = Employee::factory()->create();
 
-        app(CompanyEmployeeAttachAction::class)->execute($company, $employee);
+        app(CompanyEmployeeAttachAction::class)->execute(new CompanyEmployeeData($company, $employee));
 
         $this->assertTrue($company->employees()->whereKey($employee)->exists());
         $this->assertTrue($employee->companies()->whereKey($company)->exists());
@@ -56,7 +58,7 @@ class ModelRelationshipTest extends TestCase
         $employee = Employee::factory()->create();
         $project = Project::factory()->for($company)->create();
 
-        app(EmployeeProjectAssignAction::class)->execute($employee, $project, $company);
+        app(EmployeeProjectAssignAction::class)->execute(new EmployeeProjectData($company, $employee, $project));
 
         $assignedProject = $employee->projects()->firstOrFail();
         $assignedEmployee = $project->employees()->firstOrFail();
