@@ -25,6 +25,10 @@ return new class extends Migration
             $table->index(['employee_id', 'entry_date']);
             $table->index(['project_id', 'entry_date']);
             $table->index(['task_id']);
+            $table->unique(
+                ['company_id', 'employee_id', 'project_id', 'task_id', 'entry_date'],
+                'time_entries_unique_employee_project_task_date'
+            );
         });
     }
 

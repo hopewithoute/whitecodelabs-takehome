@@ -16,6 +16,8 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->nullable()->unique();
             $table->timestamps();
+
+            $table->index('name');
         });
     }
 

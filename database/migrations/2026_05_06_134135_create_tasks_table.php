@@ -19,6 +19,7 @@ return new class extends Migration
 
             $table->unique(['company_id', 'name']);
             $table->index(['company_id', 'id']);
+            $table->index('name');
         });
     }
 
