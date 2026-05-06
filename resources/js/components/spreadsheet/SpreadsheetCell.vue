@@ -34,6 +34,6 @@ const state = computed(() => {
         :aria-invalid="Boolean(error)"
         :class="cn(spreadsheetCellVariants({ state, align }), props.class)"
     >
-        <slot />
+        <slot></slot>
     </button>
 </template>

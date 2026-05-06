@@ -99,16 +99,16 @@ provideCommandContext({
 </script>
 
 <template>
-  <ListboxRoot
-    data-slot="command"
-    v-bind="forwarded"
-    :class="
-      cn(
-        'flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground',
-        props.class,
-      )
-    "
-  >
-    <slot />
-  </ListboxRoot>
+    <ListboxRoot
+        data-slot="command"
+        v-bind="forwarded"
+        :class="
+            cn(
+                'flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground',
+                props.class,
+            )
+        "
+    >
+        <slot></slot>
+    </ListboxRoot>
 </template>

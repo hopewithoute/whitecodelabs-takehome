@@ -3,10 +3,6 @@ import { reactiveOmit } from "@vueuse/core";
 import { PopoverContent, PopoverPortal, useForwardPropsEmits } from "reka-ui";
 import { cn } from "@/lib/utils";
 
-defineOptions({
-  inheritAttrs: false,
-});
-
 const props = defineProps({
   forceMount: { type: Boolean, required: false },
   side: { type: null, required: false },
@@ -36,6 +32,7 @@ const props = defineProps({
     skipCheck: true,
   },
 });
+
 const emits = defineEmits([
   "escapeKeyDown",
   "pointerDownOutside",
@@ -45,24 +42,28 @@ const emits = defineEmits([
   "closeAutoFocus",
 ]);
 
+defineOptions({
+  inheritAttrs: false,
+});
+
 const delegatedProps = reactiveOmit(props, "class");
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits);
 </script>
 
 <template>
-  <PopoverPortal>
-    <PopoverContent
-      data-slot="popover-content"
-      v-bind="{ ...$attrs, ...forwarded }"
-      :class="
-        cn(
-          'bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-[60] w-72 origin-(--reka-popover-content-transform-origin) rounded-lg border border-border p-3 shadow-[0_18px_60px_rgb(0_0_0/0.55),inset_0_1px_0_rgb(255_255_255/0.04)] outline-hidden',
-          props.class,
-        )
-      "
-    >
-      <slot />
-    </PopoverContent>
-  </PopoverPortal>
+    <PopoverPortal>
+        <PopoverContent
+            data-slot="popover-content"
+            v-bind="{ ...$attrs, ...forwarded }"
+            :class="
+                cn(
+                    'bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-[60] w-72 origin-(--reka-popover-content-transform-origin) rounded-lg border border-border p-3 shadow-[0_18px_60px_rgb(0_0_0/0.55),inset_0_1px_0_rgb(255_255_255/0.04)] outline-hidden',
+                    props.class,
+                )
+            "
+        >
+            <slot></slot>
+        </PopoverContent>
+    </PopoverPortal>
 </template>

@@ -8,10 +8,6 @@ import {
 } from "reka-ui";
 import { cn } from "@/lib/utils";
 
-defineOptions({
-  inheritAttrs: false,
-});
-
 const props = defineProps({
   forceMount: { type: Boolean, required: false },
   ariaLabel: { type: String, required: false },
@@ -38,27 +34,31 @@ const props = defineProps({
 
 const emits = defineEmits(["escapeKeyDown", "pointerDownOutside"]);
 
+defineOptions({
+  inheritAttrs: false,
+});
+
 const delegatedProps = reactiveOmit(props, "class");
 const forwarded = useForwardPropsEmits(delegatedProps, emits);
 </script>
 
 <template>
-  <TooltipPortal>
-    <TooltipContent
-      data-slot="tooltip-content"
-      v-bind="{ ...forwarded, ...$attrs }"
-      :class="
-        cn(
-          'animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit rounded-md border border-border bg-popover px-3 py-1.5 text-xs text-balance text-popover-foreground shadow-[0_12px_40px_rgb(0_0_0/0.45)]',
-          props.class,
-        )
-      "
-    >
-      <slot />
+    <TooltipPortal>
+        <TooltipContent
+            data-slot="tooltip-content"
+            v-bind="{ ...forwarded, ...$attrs }"
+            :class="
+                cn(
+                    'animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit rounded-md border border-border bg-popover px-3 py-1.5 text-xs text-balance text-popover-foreground shadow-[0_12px_40px_rgb(0_0_0/0.45)]',
+                    props.class,
+                )
+            "
+        >
+            <slot></slot>
 
-      <TooltipArrow
-        class="z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-popover fill-popover"
-      />
-    </TooltipContent>
-  </TooltipPortal>
+            <TooltipArrow
+                class="z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-popover fill-popover"
+            />
+        </TooltipContent>
+    </TooltipPortal>
 </template>

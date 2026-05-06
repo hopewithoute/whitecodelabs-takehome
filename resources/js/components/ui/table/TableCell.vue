@@ -11,15 +11,15 @@ const props = defineProps({
 </script>
 
 <template>
-  <td
-    data-slot="table-cell"
-    :class="
-      cn(
-        'p-2 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
-        props.class,
-      )
-    "
-  >
-    <slot />
-  </td>
+    <td
+        data-slot="table-cell"
+        :class="
+            cn(
+                'p-2 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+                props.class,
+            )
+        "
+    >
+        <slot></slot>
+    </td>
 </template>

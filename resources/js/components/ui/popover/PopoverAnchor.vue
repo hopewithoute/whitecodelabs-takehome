@@ -9,7 +9,7 @@ const props = defineProps({
 </script>
 
 <template>
-  <PopoverAnchor data-slot="popover-anchor" v-bind="props">
-    <slot />
-  </PopoverAnchor>
+    <PopoverAnchor data-slot="popover-anchor" v-bind="props">
+        <slot></slot>
+    </PopoverAnchor>
 </template>

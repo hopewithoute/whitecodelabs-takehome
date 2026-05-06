@@ -11,15 +11,15 @@ const props = defineProps({
 </script>
 
 <template>
-  <tr
-    data-slot="table-row"
-    :class="
-      cn(
-        'border-b border-border transition-colors hover:bg-muted/45 data-[state=selected]:bg-muted',
-        props.class,
-      )
-    "
-  >
-    <slot />
-  </tr>
+    <tr
+        data-slot="table-row"
+        :class="
+            cn(
+                'border-b border-border transition-colors hover:bg-muted/45 data-[state=selected]:bg-muted',
+                props.class,
+            )
+        "
+    >
+        <slot></slot>
+    </tr>
 </template>

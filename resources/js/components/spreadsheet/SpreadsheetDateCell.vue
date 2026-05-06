@@ -283,11 +283,21 @@ defineExpose({ focus });
 
         <PopoverContent class="w-72 p-2" align="start" @close-auto-focus.prevent>
             <div class="mb-2 flex items-center justify-between">
-                <Button type="button" variant="ghost" size="icon-sm" @click="moveMonth(-1)">
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    @click="moveMonth(-1)"
+                >
                     <ChevronLeft />
                 </Button>
                 <div class="text-sm font-medium">{{ monthLabel }}</div>
-                <Button type="button" variant="ghost" size="icon-sm" @click="moveMonth(1)">
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    @click="moveMonth(1)"
+                >
                     <ChevronRight />
                 </Button>
             </div>
