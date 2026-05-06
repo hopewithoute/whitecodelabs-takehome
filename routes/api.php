@@ -16,4 +16,5 @@ Route::prefix('v1')->group(function (): void {
     Route::get('companies/{company}/tasks', [CompanyTaskController::class, 'index']);
     Route::get('time-entries', [TimeEntryController::class, 'index']);
     Route::post('time-entries', [TimeEntryController::class, 'store']);
+    Route::patch('time-entries/{timeEntry}', [TimeEntryController::class, 'update']);
 });

@@ -8,4 +8,4 @@ Route::get('/', function () {
 
 Route::get('/{path}', function () {
     return view('app');
-})->where('path', '.*');
+})->where('path', '^(?!api(?:/|$)|docs(?:/|$)|storage(?:/|$)|up$|_boost(?:/|$)).*');
