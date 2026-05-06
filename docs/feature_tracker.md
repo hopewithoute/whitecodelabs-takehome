@@ -52,12 +52,12 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 
 | Status | Feature | Source Requirement | Acceptance Notes |
 | --- | --- | --- | --- |
-| Not Started | Company seed data | Required Generation | At least two companies exist for testing scope behavior. |
-| Not Started | Employee seed data | Required Generation | Includes employees belonging to one company and at least one employee belonging to multiple companies. |
-| Not Started | Project seed data | Required Generation | Each company has its own projects. |
-| Not Started | Task seed data | Required Generation | Each company has its own tasks. |
-| Not Started | Employee project assignment seed data | Required Relationships | Seeded employees are assigned to one or more projects. |
-| Not Started | Optional time entry seed data | History Tab | History can show entries immediately, or entries can be created through New Entries. |
+| Done | Company seed data | Required Generation | Seeds Acme Operations and Globex Services for scope behavior. |
+| Done | Employee seed data | Required Generation | Seeds employees belonging to one company and Cora Diaz as a shared employee across companies. |
+| Done | Project seed data | Required Generation | Each seeded company has its own projects. |
+| Done | Task seed data | Required Generation | Each seeded company has its own tasks. |
+| Done | Employee project assignment seed data | Required Relationships | Seeded employees are assigned to one or more company projects. |
+| Done | Optional time entry seed data | History Tab | Seeds history rows, including multiple tasks for the same employee/project/date. |
 | Done | Model factories | Testing Decisions | Factories support API and relationship tests for all domain models. |
 
 ## Must Have: API Endpoints
