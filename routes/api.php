@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AiTimeEntryDraftController;
 use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\CompanyEmployeeController;
 use App\Http\Controllers\Api\V1\CompanyProjectController;
@@ -14,6 +15,7 @@ Route::prefix('v1')->group(function (): void {
     Route::get('companies/{company}/employees', [CompanyEmployeeController::class, 'index']);
     Route::get('companies/{company}/projects', [CompanyProjectController::class, 'index']);
     Route::get('companies/{company}/tasks', [CompanyTaskController::class, 'index']);
+    Route::post('ai/time-entry-drafts', [AiTimeEntryDraftController::class, 'store']);
     Route::get('time-entries', [TimeEntryController::class, 'index']);
     Route::post('time-entries', [TimeEntryController::class, 'store']);
     Route::patch('time-entries/{timeEntry}', [TimeEntryController::class, 'update']);

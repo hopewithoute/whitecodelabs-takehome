@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Actions\CompanyEmployeeAttachAction;
 use App\Actions\EmployeeProjectAssignAction;
+use App\Ai\TimeEntryDraftAgent;
 use App\Data\CompanyEmployeeData;
 use App\Data\EmployeeProjectData;
 use App\Models\Company;
@@ -12,6 +13,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TimeEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Env;
 use Tests\TestCase;
 
 class ApiEndpointTest extends TestCase
@@ -288,6 +290,197 @@ class ApiEndpointTest extends TestCase
         $this->assertSame($task->id, $savedEntry->task_id);
         $this->assertSame('2026-01-15', $savedEntry->entry_date->toDateString());
         $this->assertSame('3.50', $savedEntry->hours_display);
+    }
+
+    public function test_ai_time_entry_draft_endpoint_returns_spreadsheet_ready_rows(): void
+    {
+        config()->set('ai.agents.time_entry_drafts.provider', 'deepseek');
+        config()->set('ai.agents.time_entry_drafts.model', 'any-local-model');
+
+        [$company, $employee, $project, $task] = $this->createAssignableTimeEntryGraph();
+
+        TimeEntryDraftAgent::fake([[
+            'entries' => [[
+                'company' => '',
+                'employee' => $employee->name,
+                'project' => $project->name,
+                'task' => $task->name,
+                'entry_date' => 'Jan 15, 2026',
+                'hours' => 2.5,
+                'warning' => '',
+            ]],
+        ]]);
+
+        $this->postJson('/api/v1/ai/time-entry-drafts', [
+            'company_id' => $company->id,
+            'prompt' => "{$employee->name} worked on {$project->name}.",
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.mode', 'draft')
+            ->assertJsonPath('data.entries.0.company_id', $company->id)
+            ->assertJsonPath('data.entries.0.employee_id', $employee->id)
+            ->assertJsonPath('data.entries.0.project_id', $project->id)
+            ->assertJsonPath('data.entries.0.task_id', $task->id)
+            ->assertJsonPath('data.entries.0.entry_date', '2026-01-15')
+            ->assertJsonPath('data.entries.0.hours', 2.5)
+            ->assertJsonPath('data.entries.0.warnings', []);
+
+        $this->assertDatabaseCount('time_entries', 0);
+    }
+
+    public function test_ai_time_entry_draft_endpoint_preserves_unresolved_warnings(): void
+    {
+        config()->set('ai.agents.time_entry_drafts.provider', 'deepseek');
+        config()->set('ai.agents.time_entry_drafts.model', 'any-local-model');
+
+        [$company, $employee] = $this->createCompanyWithEmployees();
+
+        TimeEntryDraftAgent::fake([[
+            'entries' => [[
+                'company' => '',
+                'employee' => $employee->name,
+                'project' => 'Unknown Project',
+                'task' => 'Unknown Task',
+                'entry_date' => '',
+                'hours' => 1,
+                'warning' => 'Date was not provided.',
+            ]],
+        ]]);
+
+        $response = $this->postJson('/api/v1/ai/time-entry-drafts', [
+            'company_id' => $company->id,
+            'prompt' => "{$employee->name} did some work.",
+        ])->assertCreated();
+
+        $draft = $response->json('data.entries.0');
+
+        $this->assertSame($employee->id, $draft['employee_id']);
+        $this->assertNull($draft['project_id']);
+        $this->assertNull($draft['task_id']);
+        $this->assertNull($draft['entry_date']);
+        $this->assertContains('Date was not provided.', $draft['warnings']);
+        $this->assertContains('Choose a matching project.', $draft['warnings']);
+        $this->assertContains('Choose a matching task.', $draft['warnings']);
+        $this->assertDatabaseCount('time_entries', 0);
+    }
+
+    public function test_ai_time_entry_draft_endpoint_parses_multiline_entries(): void
+    {
+        config()->set('ai.agents.time_entry_drafts.provider', 'deepseek');
+        config()->set('ai.agents.time_entry_drafts.model', 'any-local-model');
+
+        $company = Company::factory()->create();
+        $employeeA = Employee::factory()->create();
+        $employeeB = Employee::factory()->create();
+        $project = Project::factory()->for($company)->create();
+        $taskA = Task::factory()->for($company)->create(['name' => 'Development']);
+        $taskB = Task::factory()->for($company)->create(['name' => 'Review']);
+
+        foreach ([$employeeA, $employeeB] as $employee) {
+            app(CompanyEmployeeAttachAction::class)->execute(new CompanyEmployeeData($company, $employee));
+            app(EmployeeProjectAssignAction::class)->execute(new EmployeeProjectData($company, $employee, $project));
+        }
+
+        TimeEntryDraftAgent::fake([[
+            'entries' => [
+                [
+                    'company' => '',
+                    'employee' => $employeeA->name,
+                    'project' => $project->name,
+                    'task' => $taskA->name,
+                    'entry_date' => 'Jan 20, 2026',
+                    'hours' => 3.0,
+                    'warning' => null,
+                ],
+                [
+                    'company' => '',
+                    'employee' => $employeeB->name,
+                    'project' => $project->name,
+                    'task' => $taskB->name,
+                    'entry_date' => 'Jan 20, 2026',
+                    'hours' => 5.5,
+                    'warning' => null,
+                ],
+            ],
+        ]]);
+
+        $prompt = "Log the following for {$company->name}:\n"
+            ."{$employeeA->name} worked 3 hours on Development for {$project->name} on Jan 20 2026.\n"
+            ."{$employeeB->name} worked 5.5 hours on Review for {$project->name} on Jan 20 2026.";
+
+        $this->postJson('/api/v1/ai/time-entry-drafts', [
+            'company_id' => $company->id,
+            'prompt' => $prompt,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.mode', 'draft')
+            ->assertJsonCount(2, 'data.entries')
+            ->assertJsonPath('data.entries.0.employee_id', $employeeA->id)
+            ->assertJsonPath('data.entries.0.task_id', $taskA->id)
+            ->assertJsonPath('data.entries.0.hours', 3)
+            ->assertJsonPath('data.entries.0.warnings', [])
+            ->assertJsonPath('data.entries.1.employee_id', $employeeB->id)
+            ->assertJsonPath('data.entries.1.task_id', $taskB->id)
+            ->assertJsonPath('data.entries.1.hours', 5.5)
+            ->assertJsonPath('data.entries.1.warnings', []);
+
+        $this->assertDatabaseCount('time_entries', 0);
+    }
+
+    public function test_ai_time_entry_draft_endpoint_can_call_real_provider(): void
+    {
+        if (! filter_var(env('AI_TIME_ENTRY_DRAFT_REAL_TEST', false), FILTER_VALIDATE_BOOLEAN)) {
+            $this->markTestSkipped('Set AI_TIME_ENTRY_DRAFT_REAL_TEST=true to call the configured AI provider.');
+        }
+
+        $provider = config('ai.agents.time_entry_drafts.provider', 'openai');
+        $apiKey = config("ai.providers.{$provider}.key");
+
+        if (blank($apiKey)) {
+            $this->markTestSkipped("Set the API key for the configured [{$provider}] AI provider.");
+        }
+
+        [$company, $employee, $project, $task] = $this->createAssignableTimeEntryGraph();
+
+        $response = $this->postJson('/api/v1/ai/time-entry-drafts', [
+            'company_id' => $company->id,
+            'prompt' => "{$employee->name} worked 1.25 hours on {$task->name} for {$project->name} on 2026-01-15.",
+        ])->assertCreated();
+
+        $response
+            ->assertJsonPath('data.mode', 'draft')
+            ->assertJsonPath('data.entries.0.company_id', $company->id)
+            ->assertJsonPath('data.entries.0.employee_id', $employee->id)
+            ->assertJsonPath('data.entries.0.project_id', $project->id)
+            ->assertJsonPath('data.entries.0.task_id', $task->id)
+            ->assertJsonPath('data.entries.0.entry_date', '2026-01-15');
+
+        $this->assertNotEmpty($response->json('data.entries.0.hours'));
+        $this->assertDatabaseCount('time_entries', 0);
+    }
+
+    public function test_time_entry_draft_agent_provider_and_model_are_configurable(): void
+    {
+        $testProvider = env('AI_TEST_PROVIDER', 'deepseek');
+        $testModel = env('AI_TEST_MODEL', 'blackbox-grok-fast');
+
+        $previousProvider = $this->swapEnvironmentValue('AI_TIME_ENTRY_DRAFT_PROVIDER', $testProvider);
+        $previousModel = $this->swapEnvironmentValue('AI_TIME_ENTRY_DRAFT_MODEL', $testModel);
+
+        try {
+            Env::enablePutenv();
+            config()->set('ai', require config_path('ai.php'));
+
+            $agent = new TimeEntryDraftAgent;
+
+            $this->assertSame($testProvider, $agent->provider());
+            $this->assertSame($testModel, $agent->model());
+        } finally {
+            $this->restoreEnvironmentValue('AI_TIME_ENTRY_DRAFT_PROVIDER', $previousProvider);
+            $this->restoreEnvironmentValue('AI_TIME_ENTRY_DRAFT_MODEL', $previousModel);
+            Env::enablePutenv();
+            config()->set('ai', require config_path('ai.php'));
+        }
     }
 
     public function test_time_entries_endpoint_updates_an_existing_entry(): void
@@ -812,5 +1005,49 @@ class ApiEndpointTest extends TestCase
         ));
 
         return [$firstCompany, $secondCompany, $employee, $firstProject, $secondProject, $firstTask, $secondTask];
+    }
+
+    /**
+     * @return array{env: mixed, server: mixed, getenv: string|false}
+     */
+    private function swapEnvironmentValue(string $key, string $value): array
+    {
+        $previous = [
+            'env' => $_ENV[$key] ?? null,
+            'server' => $_SERVER[$key] ?? null,
+            'getenv' => getenv($key),
+        ];
+
+        $_ENV[$key] = $value;
+        $_SERVER[$key] = $value;
+        putenv("{$key}={$value}");
+
+        return $previous;
+    }
+
+    /**
+     * @param  array{env: mixed, server: mixed, getenv: string|false}  $previous
+     */
+    private function restoreEnvironmentValue(string $key, array $previous): void
+    {
+        if ($previous['env'] === null) {
+            unset($_ENV[$key]);
+        } else {
+            $_ENV[$key] = $previous['env'];
+        }
+
+        if ($previous['server'] === null) {
+            unset($_SERVER[$key]);
+        } else {
+            $_SERVER[$key] = $previous['server'];
+        }
+
+        if ($previous['getenv'] === false) {
+            putenv($key);
+
+            return;
+        }
+
+        putenv("{$key}={$previous['getenv']}");
     }
 }
