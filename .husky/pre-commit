@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+set -e
+
+# Pre-commit quality gate — runs ESLint (0 warnings) and e2e tests.
+# Bypassing with --no-verify will be caught by CI.
+
+echo "🔍 Running ESLint (max-warnings 0)..."
+npm run lint:strict
+
+echo "🏗️  Building frontend..."
+npm run build
+
+echo "🧪 Running e2e tests..."
+npx playwright test
+
+echo "✅ All checks passed."
