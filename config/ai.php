@@ -40,6 +40,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Agents
+    |--------------------------------------------------------------------------
+    |
+    | App-specific AI agent defaults. The time-entry draft agent defaults to the
+    | DeepSeek adapter because the local AI gateway is chat/completions
+    | compatible, while the model name itself remains fully env-selectable.
+    |
+    */
+
+    'agents' => [
+        'time_entry_drafts' => [
+            'provider' => env('AI_TIME_ENTRY_DRAFT_PROVIDER', 'deepseek'),
+            'model' => env('AI_TIME_ENTRY_DRAFT_MODEL'),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | AI Providers
     |--------------------------------------------------------------------------
     |
