@@ -86,6 +86,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | In Progress | `POST /api/v1/ai/time-entry-drafts` | Super Bonus: AI-Assisted Entry | Parses plain-English notes into spreadsheet-ready draft rows without persisting; agent provider/model are env-selectable, defaulting to the DeepSeek adapter for local gateway compatibility. |
 | Done | Thin API controllers | Boilerplate Pattern | Controllers orchestrate resources, read-side services, and query builders only. |
 | Done | Query builders where useful | Boilerplate Pattern | History and filtered project endpoints use Spatie index query builders to keep filter, sort, and eager-loading logic out of controllers. |
+| Done | Reference option response caching | Performance Considerations | Company, employee, project, task, and employee-filtered project option reads use versioned cache keys; relevant write actions invalidate the affected company or company list. |
 
 ## Must Have: Backend Validation And Invariants
 
@@ -184,6 +185,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | README setup commands | Submission Requirements | Documents composer/npm/env/key/migrate/seed/dev, build, and test commands. |
 | Done | README seed data notes | Submission Requirements | Explains demo companies, shared employee behavior, projects, tasks, assignments, and seeded history. |
 | Done | README business rules | Evaluation Criteria | Documents relationship validation, company-scoped one-project-per-date, multiple distinct tasks, and duplicate-task rejection. |
+| Done | Manual invariant testing guide | Evaluation Criteria | `docs/manual_testing_guide.md` provides seeded-data UI/API checks for relationship rules, business invariants, history behavior, keyboard UX, and AI drafts. |
 | Done | README performance notes | Performance Considerations | Documents scoped option loading, frontend memoization, query builders, indexes, and pagination tradeoff. |
 | Done | API documentation | API Requirements, Submission Quality | Scramble is installed and exposes interactive API documentation at `/docs/api` plus OpenAPI JSON at `/docs/api.json`. |
 | Done | Frontend component inventory | Interface Requirements, UX / Design Expectations | `docs/frontend_component_inventory.md` maps the required and bonus frontend components with spreadsheet-style keyboard entry as the main interaction. |

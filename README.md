@@ -51,6 +51,8 @@ npm run test:e2e
 
 Playwright derives its base URL from `PLAYWRIGHT_BASE_URL`, `APP_URL`, or `.env`; it defaults to `http://127.0.0.1:8000`.
 
+For human QA, use the invariant checklist in [docs/manual_testing_guide.md](docs/manual_testing_guide.md).
+
 ## API Documentation
 
 Scramble exposes interactive API docs at:
@@ -98,7 +100,7 @@ The backend enforces:
 - The employee may work on multiple distinct tasks for the same company, date, and project.
 - Exact duplicate task rows are rejected for the same company, employee, date, project, and task.
 
-The duplicate-task rule is an added data-integrity decision. The assignment allows multiple tasks for one project/date; this implementation treats those as distinct task rows and rejects exact duplicates because they make history and totals ambiguous. See [ADR 001](docs/adr/001-time-entry-invariants.md).
+The duplicate-task rule is an added data-integrity decision. The assignment allows multiple tasks for one project/date; this implementation treats those as distinct task rows and rejects exact duplicates because they make history and totals ambiguous.
 
 ## Frontend UX
 
@@ -158,14 +160,23 @@ Laravel Debugbar is installed as a dev dependency for local query and request in
 
 ## Performance Notes
 
-- Option endpoints are company-scoped so employees, projects, and tasks are not loaded globally into each row.
-- Project options can be filtered by `filter[employee_id]` to reflect employee assignment.
-- The frontend memoizes loaded company option buckets and employee-filtered project lists during the page session.
-- History uses Spatie Query Builder for filtering by `filter[company_id]` and prefix search through `filter[search]`.
-- Database indexes support the main lookup paths: company/date, employee/date, project/date, task, exact duplicate task guarding, and searchable label names.
-- Search is prefix-based (`term%`) so normal B-tree indexes remain useful across SQLite and MySQL. SQLite FTS5 would be the better option for true full-text or contains search, but it would require virtual tables and sync triggers that are beyond the useful scope of this take-home slice.
-- The history endpoint uses resource pagination through `TimeEntryIndexQuery::jsonPaginate()` and accepts `page` plus `per_page`.
-- History summary totals are calculated from the same filtered query with pagination removed, so total hours and grouped totals stay correct across pages.
+Which API responses should be cached?
+
+Reference data is the best cache target: companies, company employees, company projects, company tasks, and employee-filtered project options. These records change far less often than time entries and are read repeatedly while entering rows. The app caches those option responses with versioned keys and invalidates them in the relevant write actions, such as company create, employee attach, project create/assignment, and task create. History responses are not cached because they change on every create/update and depend on filters, search, pagination, and summary totals.
+
+Are dropdown options being loaded efficiently?
+
+Option endpoints are company-scoped, so employees, projects, and tasks are not loaded globally into every row. Project options can also be filtered by `filter[employee_id]` to reflect employee assignment. On the frontend, loaded company option buckets and employee-filtered project lists are memoized for the page session, so selecting the same company or employee again does not repeat the same API calls.
+
+Are unnecessary API calls avoided?
+
+The New Entries page loads dependent options lazily: company options are loaded once for the global selector, then row-level employee/project/task options are fetched only after a company is selected. Changing company or employee clears dependent fields instead of validating stale selections with extra calls. History uses debounced search and paginated requests, so typing and page navigation do not fetch the full table repeatedly.
+
+For a larger production frontend, this could be handled more comprehensively with a client-side data cache such as TanStack Query or a similar request cache. That would add shared stale-time, request deduplication, background refresh, and invalidation rules across routes instead of keeping lightweight page-local memoization.
+
+How would this behave with many companies, employees, projects, tasks, and time entries?
+
+The current shape scales reasonably for a take-home app because option reads are scoped and memoized, and history is server-paginated through `TimeEntryIndexQuery::jsonPaginate()`. History uses Spatie Query Builder for `filter[company_id]`, prefix `filter[search]`, sorting, and pagination. Database indexes support the main lookup paths: company/date, employee/date, project/date, task, exact duplicate task guarding, and searchable label names. Search is prefix-based (`term%`) so normal B-tree indexes remain useful across SQLite and MySQL; SQLite FTS5 would be better for true full-text or contains search, but would add virtual tables and sync triggers beyond this slice. Summary totals are calculated from the same filtered query with pagination removed, so totals remain correct across pages, but for very large datasets those summaries would be candidates for caching, async reporting tables, or a dedicated aggregate endpoint.
 
 ## AI Usage Export
 
