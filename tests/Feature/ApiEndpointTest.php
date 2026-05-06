@@ -2,11 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Actions\CompanyCreateAction;
 use App\Actions\CompanyEmployeeAttachAction;
 use App\Actions\EmployeeProjectAssignAction;
+use App\Actions\ProjectCreateAction;
+use App\Actions\TaskCreateAction;
 use App\Ai\TimeEntryDraftAgent;
+use App\Data\CompanyData;
 use App\Data\CompanyEmployeeData;
 use App\Data\EmployeeProjectData;
+use App\Data\ProjectData;
+use App\Data\TaskData;
 use App\Models\Company;
 use App\Models\Employee;
 use App\Models\Project;
@@ -14,6 +20,7 @@ use App\Models\Task;
 use App\Models\TimeEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Env;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class ApiEndpointTest extends TestCase
@@ -92,6 +99,166 @@ class ApiEndpointTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.name', 'Implementation');
+    }
+
+    public function test_reference_option_cache_is_invalidated_by_write_actions(): void
+    {
+        Cache::flush();
+
+        $company = Company::factory()->create();
+        Task::factory()->for($company)->create(['name' => 'Implementation']);
+
+        $this->getJson("/api/v1/companies/{$company->id}/tasks")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Implementation');
+
+        Task::factory()->for($company)->create(['name' => 'Direct Write']);
+
+        $this->getJson("/api/v1/companies/{$company->id}/tasks")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonMissing(['name' => 'Direct Write']);
+
+        app(TaskCreateAction::class)->execute(new TaskData($company, 'Action Write'));
+
+        $this->getJson("/api/v1/companies/{$company->id}/tasks")
+            ->assertOk()
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('data.0.name', 'Action Write')
+            ->assertJsonPath('data.1.name', 'Direct Write')
+            ->assertJsonPath('data.2.name', 'Implementation');
+    }
+
+    public function test_company_option_cache_is_invalidated_by_company_create_action(): void
+    {
+        Cache::flush();
+
+        Company::factory()->create(['name' => 'Acme Operations']);
+
+        $this->getJson('/api/v1/companies')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Acme Operations');
+
+        Company::factory()->create(['name' => 'Direct Write']);
+
+        $this->getJson('/api/v1/companies')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonMissing(['name' => 'Direct Write']);
+
+        app(CompanyCreateAction::class)->execute(new CompanyData('Action Write'));
+
+        $this->getJson('/api/v1/companies')
+            ->assertOk()
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('data.0.name', 'Acme Operations')
+            ->assertJsonPath('data.1.name', 'Action Write')
+            ->assertJsonPath('data.2.name', 'Direct Write');
+    }
+
+    public function test_company_employee_option_cache_is_invalidated_by_attach_action(): void
+    {
+        Cache::flush();
+
+        $company = Company::factory()->create();
+        $employee = Employee::factory()->create(['name' => 'Ava Chen']);
+        $company->employees()->attach($employee);
+
+        $this->getJson("/api/v1/companies/{$company->id}/employees")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Ava Chen');
+
+        $directEmployee = Employee::factory()->create(['name' => 'Ben Carter']);
+        $company->employees()->attach($directEmployee);
+
+        $this->getJson("/api/v1/companies/{$company->id}/employees")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonMissing(['name' => 'Ben Carter']);
+
+        $actionEmployee = Employee::factory()->create(['name' => 'Cora Diaz']);
+        app(CompanyEmployeeAttachAction::class)->execute(new CompanyEmployeeData($company, $actionEmployee));
+
+        $this->getJson("/api/v1/companies/{$company->id}/employees")
+            ->assertOk()
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('data.0.name', 'Ava Chen')
+            ->assertJsonPath('data.1.name', 'Ben Carter')
+            ->assertJsonPath('data.2.name', 'Cora Diaz');
+    }
+
+    public function test_company_project_option_cache_is_invalidated_by_project_create_action(): void
+    {
+        Cache::flush();
+
+        $company = Company::factory()->create();
+        Project::factory()->for($company)->create(['name' => 'Client Portal']);
+
+        $this->getJson("/api/v1/companies/{$company->id}/projects")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Client Portal');
+
+        Project::factory()->for($company)->create(['name' => 'Direct Write']);
+
+        $this->getJson("/api/v1/companies/{$company->id}/projects")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonMissing(['name' => 'Direct Write']);
+
+        app(ProjectCreateAction::class)->execute(new ProjectData($company, 'Action Write'));
+
+        $this->getJson("/api/v1/companies/{$company->id}/projects")
+            ->assertOk()
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('data.0.name', 'Action Write')
+            ->assertJsonPath('data.1.name', 'Client Portal')
+            ->assertJsonPath('data.2.name', 'Direct Write');
+    }
+
+    public function test_employee_filtered_project_cache_is_invalidated_by_assignment_action(): void
+    {
+        Cache::flush();
+
+        $company = Company::factory()->create();
+        $employee = Employee::factory()->create();
+        $assignedProject = Project::factory()->for($company)->create(['name' => 'Assigned Project']);
+        $directProject = Project::factory()->for($company)->create(['name' => 'Direct Assignment']);
+        $actionProject = Project::factory()->for($company)->create(['name' => 'Action Assignment']);
+
+        app(EmployeeProjectAssignAction::class)->execute(new EmployeeProjectData(
+            company: $company,
+            employee: $employee,
+            project: $assignedProject,
+        ));
+
+        $this->getJson("/api/v1/companies/{$company->id}/projects?filter[employee_id]={$employee->id}")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Assigned Project');
+
+        $employee->projects()->attach($directProject, ['company_id' => $company->id]);
+
+        $this->getJson("/api/v1/companies/{$company->id}/projects?filter[employee_id]={$employee->id}")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonMissing(['name' => 'Direct Assignment']);
+
+        app(EmployeeProjectAssignAction::class)->execute(new EmployeeProjectData(
+            company: $company,
+            employee: $employee,
+            project: $actionProject,
+        ));
+
+        $this->getJson("/api/v1/companies/{$company->id}/projects?filter[employee_id]={$employee->id}")
+            ->assertOk()
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('data.0.name', 'Action Assignment')
+            ->assertJsonPath('data.1.name', 'Assigned Project')
+            ->assertJsonPath('data.2.name', 'Direct Assignment');
     }
 
     public function test_time_entries_endpoint_returns_history_with_related_labels(): void
