@@ -36,7 +36,7 @@ test('edits an existing history entry', async ({ page }) => {
     await page.getByPlaceholder('Search company, employee, project, or task').fill('Cora');
     await expect(page.getByRole('cell', { name: 'Cora Diaz' }).first()).toBeVisible();
 
-    await page.getByRole('button', { name: 'Edit Cora Diaz entry' }).click();
+    await page.getByRole('button', { name: 'Edit Cora Diaz entry' }).first().click();
     await expect(page.getByRole('dialog', { name: 'Edit time entry' })).toBeVisible();
 
     await page.getByLabel('Hours').fill('6.25');

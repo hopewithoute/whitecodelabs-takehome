@@ -82,12 +82,18 @@ test('spreadsheet actions are available through keyboard shortcuts', async ({ pa
 });
 
 test('global shortcuts switch tabs and focus the spreadsheet', async ({ page }) => {
-    const legend = page.getByLabel('Keyboard shortcuts');
+    const shortcutButton = page.getByLabel('Keyboard shortcuts');
 
-    await expect(legend.getByText('Shortcuts')).toBeVisible();
-    await expect(legend.getByText('New entries', { exact: true })).toBeVisible();
-    await expect(legend.getByText('History', { exact: true })).toBeVisible();
-    await expect(legend.getByText('Spreadsheet', { exact: true })).toBeVisible();
+    await shortcutButton.click();
+    const popover = page.locator('[data-slot="popover-content"]');
+
+    await expect(popover.getByText('Keyboard shortcuts', { exact: true })).toBeVisible();
+    await expect(popover.getByText('New entries', { exact: true })).toBeVisible();
+    await expect(popover.getByText('History', { exact: true })).toBeVisible();
+    await expect(popover.getByText('Spreadsheet', { exact: true })).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(popover).not.toBeVisible();
 
     await page.keyboard.press('Alt+H');
     await expect(page.getByRole('heading', { name: 'History' })).toBeVisible();
@@ -113,6 +119,59 @@ test('batch submit shortcut keeps row-level validation readable', async ({ page 
     await expect(firstRow.getByText('Choose a task.')).toBeVisible();
     await expect(firstRow.getByText('Enter hours.')).toBeVisible();
 });
+
+test('backend invariant errors render beside the affected row fields', async ({ page }) => {
+    const { entryDate, taskName } = await findAvailableSlot(page);
+
+    const firstRow = page.locator('tbody tr').first();
+
+    await selectSpreadsheetOption(page, firstRow, 'Select company', 'Acme Operations');
+    await selectDate(page, firstRow, entryDate);
+    await selectSpreadsheetOption(page, firstRow, 'Select employee', 'Ben Carter');
+    await selectSpreadsheetOption(page, firstRow, 'Select project', 'Website Redesign');
+    await selectSpreadsheetOption(page, firstRow, 'Select task', taskName);
+    await firstRow.getByPlaceholder('0.00').fill('3.00');
+
+    await firstRow.getByPlaceholder('0.00').focus();
+    await page.keyboard.press('Control+D');
+
+    const secondRow = page.locator('tbody tr').nth(1);
+    await expect(secondRow.getByPlaceholder('0.00')).toBeFocused();
+
+    await page.getByRole('button', { name: 'Submit batch' }).click();
+
+    await expect(page.getByText('Time entries were not saved.')).toBeVisible();
+
+    await expect(firstRow.getByText('This task is already listed')).toBeVisible();
+    await expect(secondRow.getByText('This task is already listed')).toBeVisible();
+});
+
+async function findAvailableSlot(page) {
+    const response = await page.request.get('/api/v1/time-entries?filter[search]=Ben%20Carter&per_page=50');
+    const payload = await response.json();
+    const used = new Set((payload.data ?? [])
+        .filter((entry) => entry.company?.name === 'Acme Operations' && entry.project?.name === 'Website Redesign')
+        .map((entry) => `${entry.entry_date}:${entry.task?.name}`));
+    const taskNames = ['Planning', 'Development', 'Review'];
+    const today = new Date();
+
+    for (let day = 1; day <= 28; day += 1) {
+        const entryDate = formatDate(new Date(today.getFullYear(), today.getMonth(), day));
+
+        for (const taskName of taskNames) {
+            if (!used.has(`${entryDate}:${taskName}`)) {
+                return { entryDate, taskName };
+            }
+        }
+    }
+
+    throw new Error('No unused current-month Website Redesign slot is available for Ben Carter.');
+}
+
+async function selectDate(page, row, date) {
+    await row.getByRole('button', { name: 'Set date' }).click();
+    await page.locator(`[data-date="${date}"]`).click();
+}
 
 async function selectSpreadsheetOption(page, row, triggerName, optionName) {
     await row.getByRole('button', { name: triggerName }).click();
