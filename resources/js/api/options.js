@@ -36,3 +36,16 @@ export async function createTimeEntries(entries) {
 
     return payload.data ?? [];
 }
+
+export async function getTimeEntries(companyId = null) {
+    const params = new URLSearchParams();
+
+    if (companyId) {
+        params.set('filter[company_id]', companyId);
+    }
+
+    const query = params.toString();
+    const payload = await apiGet(`/api/v1/time-entries${query ? `?${query}` : ''}`);
+
+    return payload.data ?? [];
+}
