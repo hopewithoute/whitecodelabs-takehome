@@ -1,5 +1,6 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
+import { toast } from 'vue-sonner';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
@@ -23,13 +24,18 @@ import SpreadsheetToolbar from './SpreadsheetToolbar.vue';
 
 const props = defineProps({
     companies: { type: Array, default: () => [] },
+    focusKey: { type: Number, default: 0 },
     selectedCompanyId: { type: [String, null], default: null },
 });
 
+const emit = defineEmits(['submitted']);
+
+const nextDraftRowId = ref(1);
 const rows = ref([makeRow(), makeRow()]);
 const errors = ref({});
 const submitError = ref(null);
 const submitState = ref('idle');
+const editorCloseSignal = ref(0);
 const optionsByCompany = reactive({});
 const loadingOptions = reactive({});
 const projectsByCompanyEmployee = reactive({});
@@ -57,6 +63,7 @@ const errorFieldByColumn = {
 
 function makeRow(overrides = {}) {
     return {
+        _key: nextDraftRowId.value++,
         company: props.selectedCompanyId ?? null,
         date: '',
         employee: null,
@@ -67,8 +74,14 @@ function makeRow(overrides = {}) {
     };
 }
 
-function addRow() {
+function addRow(options = {}) {
+    const nextIndex = rows.value.length;
+
     rows.value.push(makeRow());
+
+    if (options.focus) {
+        nextTick(() => setActiveCell(nextIndex, 0, { focus: true }));
+    }
 }
 
 function registerCellRef(row, column, element) {
@@ -76,9 +89,18 @@ function registerCellRef(row, column, element) {
 }
 
 function duplicateActiveRow() {
+    closeCellEditors();
+
     const source = rows.value[activeCell.row] ?? rows.value[0];
-    rows.value.splice(activeCell.row + 1, 0, { ...source });
-    setActiveCell(activeCell.row + 1, 0, { focus: true });
+    const duplicateRow = activeCell.row + 1;
+
+    rows.value.splice(activeCell.row + 1, 0, { ...source, _key: nextDraftRowId.value++ });
+    setActiveCell(duplicateRow, spreadsheetColumns.indexOf('hours'), { focus: true });
+    nextTick(closeCellEditors);
+}
+
+function closeCellEditors() {
+    editorCloseSignal.value += 1;
 }
 
 function clearRows() {
@@ -106,6 +128,32 @@ function navigateFromCell(row, column, direction = 1) {
     }
 
     setActiveCell(row, nextColumn, { focus: true });
+}
+
+function handleSpreadsheetShortcut(event) {
+    if (event.repeat || (!event.ctrlKey && !event.metaKey)) {
+        return;
+    }
+
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (event.shiftKey) {
+            closeCellEditors();
+            addRow({ focus: true });
+            return;
+        }
+
+        submitBatch();
+        return;
+    }
+
+    if (event.key.toLowerCase() === 'd' && !event.shiftKey && !event.altKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        duplicateActiveRow();
+    }
 }
 
 function companyOptions() {
@@ -239,6 +287,10 @@ function rowStatusVariant(row, rowIndex) {
 }
 
 async function submitBatch() {
+    if (submitState.value === 'submitting') {
+        return;
+    }
+
     const submittedRows = rows.value
         .map((row, index) => ({ index, row }))
         .filter(({ row }) => rowHasInput(row));
@@ -254,7 +306,7 @@ async function submitBatch() {
     submitState.value = 'submitting';
 
     try {
-        await createTimeEntries(submittedRows.map(({ row }) => ({
+        const createdEntries = await createTimeEntries(submittedRows.map(({ row }) => ({
             company_id: row.company,
             employee_id: row.employee,
             project_id: row.project,
@@ -265,10 +317,17 @@ async function submitBatch() {
 
         rows.value = [makeRow()];
         submitState.value = 'submitted';
+        toast.success('Time entries saved.', {
+            description: `${createdEntries.length} ${createdEntries.length === 1 ? 'entry' : 'entries'} added to history.`,
+        });
+        emit('submitted', createdEntries);
     } catch (exception) {
         errors.value = remapValidationErrors(exception.errors ?? {}, submittedRows);
         submitError.value = exception.message;
         submitState.value = 'idle';
+        toast.error('Time entries were not saved.', {
+            description: exception.message,
+        });
     }
 }
 
@@ -314,10 +373,18 @@ watch(
     },
     { immediate: true },
 );
+
+watch(
+    () => props.focusKey,
+    () => setActiveCell(0, 0, { focus: true }),
+);
 </script>
 
 <template>
-    <section class="overflow-hidden rounded-xl border border-border bg-card shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]">
+    <section
+        class="overflow-hidden rounded-xl border border-border bg-card shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]"
+        @keydown.capture="handleSpreadsheetShortcut"
+    >
         <SpreadsheetToolbar
             :row-count="rows.length"
             :is-submitting="submitState === 'submitting'"
@@ -349,7 +416,7 @@ watch(
                 </TableRow>
             </TableHeader>
             <TableBody>
-                <TableRow v-for="(row, rowIndex) in rows" :key="rowIndex" class="hover:bg-transparent">
+                <TableRow v-for="(row, rowIndex) in rows" :key="row._key" class="hover:bg-transparent">
                     <TableCell class="text-center font-mono text-xs text-muted-foreground">
                         {{ rowIndex + 1 }}
                     </TableCell>
@@ -378,6 +445,7 @@ watch(
                             :error="fieldError(rowIndex, column)"
                             :model-value="row.date"
                             :placeholder="cellPlaceholder(column)"
+                            :close-signal="editorCloseSignal"
                             @commit="navigateFromCell(rowIndex, columnIndex)"
                             @focus="setActiveCell(rowIndex, columnIndex)"
                             @keydown="handleCellKeydown($event, rowIndex, columnIndex)"
@@ -400,6 +468,7 @@ watch(
                             }[column]"
                             :placeholder="cellPlaceholder(column)"
                             :search-placeholder="`Filter ${columnLabels[column].toLowerCase()}...`"
+                            :close-signal="editorCloseSignal"
                             @commit="navigateFromCell(rowIndex, columnIndex)"
                             @focus="setActiveCell(rowIndex, columnIndex)"
                             @keydown="handleCellKeydown($event, rowIndex, columnIndex)"

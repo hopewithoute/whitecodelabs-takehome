@@ -10,6 +10,9 @@ const props = defineProps({
     error: { type: [String, null], default: null },
     modelValue: { type: [String, null], default: null },
     placeholder: { type: String, required: true },
+    closeSignal: { type: Number, default: 0 },
+    triggerVariant: { type: String, default: 'cell' },
+    triggerClass: { type: String, default: '' },
 });
 
 const emit = defineEmits(['commit', 'focus', 'keydown', 'navigate', 'select']);
@@ -20,7 +23,7 @@ const calendar = ref(null);
 const visibleMonth = ref(startOfMonth(parseDate(props.modelValue) ?? new Date()));
 
 const selectedDate = computed(() => parseDate(props.modelValue));
-const selectedLabel = computed(() => props.modelValue || props.placeholder);
+const selectedLabel = computed(() => selectedDate.value ? formatDisplayDate(selectedDate.value) : props.placeholder);
 const monthLabel = computed(() => visibleMonth.value.toLocaleDateString('en-US', {
     month: 'long',
     year: 'numeric',
@@ -226,6 +229,14 @@ function formatDate(date) {
     return `${year}-${month}-${day}`;
 }
 
+function formatDisplayDate(date) {
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+}
+
 watch(
     () => props.modelValue,
     (value) => {
@@ -234,6 +245,13 @@ watch(
         if (date) {
             visibleMonth.value = startOfMonth(date);
         }
+    },
+);
+
+watch(
+    () => props.closeSignal,
+    () => {
+        open.value = false;
     },
 );
 
@@ -246,13 +264,13 @@ defineExpose({ focus });
             <Button
                 ref="trigger"
                 type="button"
-                variant="cell"
+                :variant="triggerVariant"
                 size="cell"
                 data-editor="trigger"
                 :data-active="active"
                 :aria-invalid="Boolean(error)"
                 :aria-expanded="open"
-                class="justify-between"
+                :class="cn('justify-between', triggerClass)"
                 @focus="emit('focus')"
                 @keydown="handleTriggerKeydown"
             >

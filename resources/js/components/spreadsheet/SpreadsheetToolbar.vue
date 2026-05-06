@@ -29,7 +29,7 @@ const emit = defineEmits(['add-row', 'duplicate-row', 'clear-rows', 'submit']);
                             Add row
                         </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Add a blank row</TooltipContent>
+                    <TooltipContent>Add a blank row (Ctrl+Shift+Enter)</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -38,7 +38,7 @@ const emit = defineEmits(['add-row', 'duplicate-row', 'clear-rows', 'submit']);
                             <Copy />
                         </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Duplicate active row</TooltipContent>
+                    <TooltipContent>Duplicate active row (Ctrl+D)</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -52,10 +52,15 @@ const emit = defineEmits(['add-row', 'duplicate-row', 'clear-rows', 'submit']);
 
                 <Separator orientation="vertical" class="mx-1 h-6" />
 
-                <Button size="sm" :disabled="isSubmitting" @click="emit('submit')">
-                    <Send />
-                    {{ isSubmitting ? 'Submitting' : 'Submit batch' }}
-                </Button>
+                <Tooltip>
+                    <TooltipTrigger as-child>
+                        <Button size="sm" :disabled="isSubmitting" @click="emit('submit')">
+                            <Send />
+                            {{ isSubmitting ? 'Submitting' : 'Submit batch' }}
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Submit batch (Ctrl+Enter)</TooltipContent>
+                </Tooltip>
             </div>
         </div>
     </TooltipProvider>

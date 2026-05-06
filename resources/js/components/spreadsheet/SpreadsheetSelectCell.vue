@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { Check, ChevronsUpDown } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +22,7 @@ const props = defineProps({
     options: { type: Array, default: () => [] },
     placeholder: { type: String, required: true },
     searchPlaceholder: { type: String, default: 'Filter options...' },
+    closeSignal: { type: Number, default: 0 },
 });
 
 const emit = defineEmits(['commit', 'focus', 'keydown', 'navigate', 'select']);
@@ -84,6 +85,13 @@ function handleEditorKeydown(event) {
     open.value = false;
     emit('navigate', event.shiftKey ? -1 : 1);
 }
+
+watch(
+    () => props.closeSignal,
+    () => {
+        open.value = false;
+    },
+);
 
 defineExpose({ focus });
 </script>

@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from './client';
+import { apiGet, apiPatch, apiPost } from './client';
 
 export async function getCompanies() {
     const payload = await apiGet('/api/v1/companies');
@@ -37,15 +37,40 @@ export async function createTimeEntries(entries) {
     return payload.data ?? [];
 }
 
-export async function getTimeEntries(companyId = null) {
+export async function updateTimeEntry(entryId, entry) {
+    const payload = await apiPatch(`/api/v1/time-entries/${entryId}`, entry);
+
+    return payload.data ?? null;
+}
+
+export async function getTimeEntries(options = {}) {
+    const normalizedOptions = typeof options === 'string'
+        ? { companyId: options }
+        : options ?? {};
     const params = new URLSearchParams();
 
-    if (companyId) {
-        params.set('filter[company_id]', companyId);
+    if (normalizedOptions.companyId) {
+        params.set('filter[company_id]', normalizedOptions.companyId);
+    }
+
+    if (normalizedOptions.search) {
+        params.set('filter[search]', normalizedOptions.search);
+    }
+
+    if (normalizedOptions.page) {
+        params.set('page', normalizedOptions.page);
+    }
+
+    if (normalizedOptions.perPage) {
+        params.set('per_page', normalizedOptions.perPage);
     }
 
     const query = params.toString();
     const payload = await apiGet(`/api/v1/time-entries${query ? `?${query}` : ''}`);
 
-    return payload.data ?? [];
+    return {
+        entries: payload.data ?? [],
+        links: payload.links ?? {},
+        meta: payload.meta ?? {},
+    };
 }

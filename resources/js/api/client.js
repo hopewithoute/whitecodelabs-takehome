@@ -17,6 +17,19 @@ export async function apiPost(path, body) {
     return response.json();
 }
 
+export async function apiPatch(path, body) {
+    const response = await apiRequest(path, {
+        method: 'PATCH',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+    });
+
+    return response.json();
+}
+
 async function apiRequest(path, options = {}) {
     const response = await fetch(path, {
         ...options,
