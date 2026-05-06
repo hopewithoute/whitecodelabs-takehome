@@ -2,13 +2,12 @@
 
 namespace App\Actions;
 
-use App\Models\Company;
-use App\Models\Employee;
+use App\Data\CompanyEmployeeData;
 
 readonly class CompanyEmployeeAttachAction
 {
-    public function execute(Company $company, Employee $employee): void
+    public function execute(CompanyEmployeeData $data): void
     {
-        $company->employees()->syncWithoutDetaching($employee);
+        $data->company->employees()->syncWithoutDetaching($data->employee);
     }
 }

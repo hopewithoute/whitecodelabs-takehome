@@ -2,18 +2,14 @@
 
 namespace App\Actions;
 
-use App\Models\Company;
-use App\Models\Employee;
-use App\Models\Project;
+use App\Data\EmployeeProjectData;
 
 readonly class EmployeeProjectAssignAction
 {
-    public function execute(Employee $employee, Project $project, Company $company): void
+    public function execute(EmployeeProjectData $data): void
     {
-        $employee->projects()->syncWithoutDetaching([
-            $project->id => [
-                'company_id' => $company->id,
-            ],
+        $data->employee->projects()->syncWithoutDetaching([
+            $data->project->id => $data->toPivotData(),
         ]);
     }
 }
