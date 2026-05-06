@@ -36,17 +36,17 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 
 | Status | Feature | Source Requirement | Acceptance Notes |
 | --- | --- | --- | --- |
-| Not Started | `Company` model | Required Generation | Uses UUIDs and exposes employees, projects, tasks, and time entries relationships. |
-| Not Started | `Employee` model | Required Generation | Uses UUIDs and exposes companies, projects, and time entries relationships. |
-| Not Started | `Project` model | Required Generation | Uses UUIDs and exposes company, employees, and time entries relationships. |
-| Not Started | `Task` model | Required Generation | Uses UUIDs and exposes company and time entries relationships. |
-| Not Started | `TimeEntry` model | Required Generation | Uses UUIDs and exposes company, employee, project, and task relationships. |
-| Not Started | Company has many employees | Required Relationships | Implemented through `company_employee`. |
-| Not Started | Employee belongs to multiple companies | Required Relationships | Employee can be attached to more than one company. |
-| Not Started | Company has many projects | Required Relationships | Project belongs to one company. |
-| Not Started | Company has many tasks | Required Relationships | Task belongs to one company and is not project-specific. |
-| Not Started | Employees assigned to projects | Required Relationships | Implemented through `employee_project`. |
-| Not Started | Time entry belongs to required records | Required Relationships | Time entry belongs to company, employee, project, task, and date. |
+| Done | `Company` model | Required Generation | Uses UUIDs and exposes employees, projects, tasks, and time entries relationships. |
+| Done | `Employee` model | Required Generation | Uses UUIDs and exposes companies, projects, and time entries relationships. |
+| Done | `Project` model | Required Generation | Uses UUIDs and exposes company, employees, and time entries relationships. |
+| Done | `Task` model | Required Generation | Uses UUIDs and exposes company and time entries relationships. |
+| Done | `TimeEntry` model | Required Generation | Uses UUIDs, casts entry date/hours, appends display fields, and exposes company, employee, project, and task relationships. |
+| Done | Company has many employees | Required Relationships | Implemented through `company_employee` with `Company::addEmployee()`. |
+| Done | Employee belongs to multiple companies | Required Relationships | Employee can be attached to more than one company. |
+| Done | Company has many projects | Required Relationships | Project belongs to one company. |
+| Done | Company has many tasks | Required Relationships | Task belongs to one company and is not project-specific. |
+| Done | Employees assigned to projects | Required Relationships | Implemented through `employee_project` with `Employee::assignToProject()`. |
+| Done | Time entry belongs to required records | Required Relationships | Time entry belongs to company, employee, project, task, and date. |
 
 ## Must Have: Seed Data And Factories
 
@@ -58,7 +58,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Not Started | Task seed data | Required Generation | Each company has its own tasks. |
 | Not Started | Employee project assignment seed data | Required Relationships | Seeded employees are assigned to one or more projects. |
 | Not Started | Optional time entry seed data | History Tab | History can show entries immediately, or entries can be created through New Entries. |
-| Not Started | Model factories | Testing Decisions | Factories support API and relationship tests. |
+| Done | Model factories | Testing Decisions | Factories support API and relationship tests for all domain models. |
 
 ## Must Have: API Endpoints
 
@@ -140,7 +140,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 
 | Status | Feature | Source Requirement | Acceptance Notes |
 | --- | --- | --- | --- |
-| Not Started | Relationship tests | Evaluation Criteria | Proves required model relationships work. |
+| Done | Relationship tests | Evaluation Criteria | Proves required model relationships and appended time-entry display fields work. |
 | Not Started | Company options API test | API Requirements | Endpoint returns expected company resource shape. |
 | Not Started | Company employees API test | New Entries Tab | Endpoint returns only employees for selected company. |
 | Not Started | Company projects API test | New Entries Tab | Endpoint returns only projects for selected company. |

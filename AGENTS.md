@@ -27,6 +27,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - You must follow all existing code conventions used in this application. When creating or editing a file, check sibling files for the correct structure, approach, and naming.
 - Use descriptive names for variables and methods. For example, `isRegisteredForDiscounts`, not `discount()`.
 - Check for existing components to reuse before writing a new one.
+- Do not use explicit PHP scalar type casting such as `(float)`, `(int)`, `(string)`, or `(bool)` in application code. Prefer typed DTOs, Eloquent casts, validation, value objects, framework helpers, or explicit formatting methods that preserve the domain type.
 
 ## Verification Scripts
 
