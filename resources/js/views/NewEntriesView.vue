@@ -1,8 +1,21 @@
+<script setup>
+import TimeEntrySpreadsheet from '@/components/spreadsheet/TimeEntrySpreadsheet.vue';
+
+defineProps({
+    companies: { type: Array, default: () => [] },
+    selectedCompanyId: { type: [String, null], default: null },
+});
+</script>
+
 <template>
-    <section class="rounded-lg border border-border bg-card p-6 text-card-foreground">
-        <h2 class="text-lg font-semibold">New Entries</h2>
-        <p class="mt-1 text-sm text-muted-foreground">
-            Vue Router and the SPA shell are ready. The editable time-entry table will be built in the frontend slice.
-        </p>
-    </section>
+    <div class="space-y-4">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <h2 class="text-lg font-semibold tracking-[-0.02em]">New Entries</h2>
+                <p class="text-sm text-muted-foreground">Batch time entry workspace with spreadsheet-style controls.</p>
+            </div>
+        </div>
+
+        <TimeEntrySpreadsheet :companies="companies" :selected-company-id="selectedCompanyId" />
+    </div>
 </template>
