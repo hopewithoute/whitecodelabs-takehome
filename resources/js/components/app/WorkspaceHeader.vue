@@ -8,6 +8,7 @@ defineProps({
     companies: { type: Array, required: true },
     isLoadingCompanies: { type: Boolean, default: false },
     selectedCompanyId: { type: [String, null], default: null },
+    shortcutLegendOpenKey: { type: Number, default: 0 },
 });
 
 const emit = defineEmits(['update:selectedCompanyId']);
@@ -18,7 +19,7 @@ const emit = defineEmits(['update:selectedCompanyId']);
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div class="min-w-0">
                 <div class="mb-2 flex items-center gap-2">
-                    <span class="h-2 w-2 rounded-full bg-primary shadow-[0_0_20px_rgb(94_106_210/0.75)]" />
+                    <span class="h-2 w-2 rounded-full bg-primary shadow-[0_0_20px_rgb(94_106_210/0.75)]"></span>
                     <p class="text-xs font-medium tracking-[0.04em] text-muted-foreground uppercase">Time entry</p>
                     <Badge variant="secondary">API backed</Badge>
                 </div>
@@ -28,18 +29,17 @@ const emit = defineEmits(['update:selectedCompanyId']);
             </div>
 
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <ScopeCompanySelect
-                    :companies="companies"
-                    :is-loading="isLoadingCompanies"
-                    :model-value="selectedCompanyId"
-                    @update:model-value="emit('update:selectedCompanyId', $event)"
-                />
+                <div class="flex items-center gap-1">
+                    <KeyboardShortcutLegend :open-key="shortcutLegendOpenKey" />
+                    <ScopeCompanySelect
+                        :companies="companies"
+                        :is-loading="isLoadingCompanies"
+                        :model-value="selectedCompanyId"
+                        @update:model-value="emit('update:selectedCompanyId', $event)"
+                    />
+                </div>
                 <RouteTabs />
             </div>
-        </div>
-
-        <div class="mt-4 border-t border-border pt-3">
-            <KeyboardShortcutLegend />
         </div>
     </header>
 </template>

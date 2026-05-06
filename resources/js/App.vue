@@ -10,7 +10,9 @@ import { useCompanies } from '@/composables/useCompanies';
 
 const selectedCompanyId = ref(null);
 const historyRefreshKey = ref(0);
+const historySearchFocusKey = ref(0);
 const spreadsheetFocusKey = ref(0);
+const shortcutLegendOpenKey = ref(0);
 const router = useRouter();
 const { companies, error, isLoading } = useCompanies();
 
@@ -19,13 +21,19 @@ function markHistoryStale() {
 }
 
 function handleGlobalShortcut(event) {
+    if (event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        shortcutLegendOpenKey.value += 1;
+        return;
+    }
+
     if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
         return;
     }
 
     const key = event.key.toLowerCase();
 
-    if (!['n', 'h', 'e'].includes(key)) {
+    if (!['n', 'h', 'e', 's'].includes(key)) {
         return;
     }
 
@@ -38,6 +46,14 @@ function handleGlobalShortcut(event) {
 
     if (key === 'h') {
         router.push({ name: 'entries.history' });
+        return;
+    }
+
+    if (key === 's') {
+        router.push({ name: 'entries.history' }).then(async () => {
+            await nextTick();
+            historySearchFocusKey.value += 1;
+        });
         return;
     }
 
@@ -58,6 +74,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleGlobalShortcut
                 v-model:selected-company-id="selectedCompanyId"
                 :companies="companies"
                 :is-loading-companies="isLoading"
+                :shortcut-legend-open-key="shortcutLegendOpenKey"
             />
 
             <ApiErrorBanner :error="error" />
@@ -68,6 +85,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleGlobalShortcut
                     :companies="companies"
                     :history-refresh-key="historyRefreshKey"
                     :selected-company-id="selectedCompanyId"
+                    :history-search-focus-key="historySearchFocusKey"
                     :spreadsheet-focus-key="spreadsheetFocusKey"
                     @time-entries-created="markHistoryStale"
                 />

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, reactive, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -11,13 +11,10 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import {
-    createTimeEntries,
-    getCompanyEmployees,
-    getCompanyProjects,
-    getCompanyTasks,
-} from '@/api/options';
+import { createTimeEntries } from '@/api/options';
 import { spreadsheetColumns, useSpreadsheetNavigation } from '@/composables/useSpreadsheetNavigation';
+import { useSpreadsheetOptions } from '@/composables/useSpreadsheetOptions';
+import AiEntryAssistant from './AiEntryAssistant.vue';
 import SpreadsheetDateCell from './SpreadsheetDateCell.vue';
 import SpreadsheetSelectCell from './SpreadsheetSelectCell.vue';
 import SpreadsheetToolbar from './SpreadsheetToolbar.vue';
@@ -30,18 +27,21 @@ const props = defineProps({
 
 const emit = defineEmits(['submitted']);
 
+const companiesRef = computed(() => props.companies);
+
 const nextDraftRowId = ref(1);
 const rows = ref([makeRow(), makeRow()]);
 const errors = ref({});
 const submitError = ref(null);
 const submitState = ref('idle');
 const editorCloseSignal = ref(0);
-const optionsByCompany = reactive({});
-const loadingOptions = reactive({});
-const projectsByCompanyEmployee = reactive({});
 
 const rowCount = computed(() => rows.value.length);
 const { activeCell, handleCellKeydown, setActiveCell, setCellRef } = useSpreadsheetNavigation(rowCount, addRow);
+const { loadingOptions, getOptions, handleSelect, ensureCompanyOptions, ensureEmployeeProjects } = useSpreadsheetOptions(
+    companiesRef,
+    (message) => { submitError.value = message; },
+);
 
 const columnLabels = {
     company: 'Company',
@@ -70,6 +70,7 @@ function makeRow(overrides = {}) {
         project: null,
         task: null,
         hours: '',
+        _warnings: [],
         ...overrides,
     };
 }
@@ -131,6 +132,10 @@ function navigateFromCell(row, column, direction = 1) {
 }
 
 function handleSpreadsheetShortcut(event) {
+    if (event.target?.closest?.('[data-ai-entry-assistant]')) {
+        return;
+    }
+
     if (event.repeat || (!event.ctrlKey && !event.metaKey)) {
         return;
     }
@@ -156,106 +161,61 @@ function handleSpreadsheetShortcut(event) {
     }
 }
 
-function companyOptions() {
-    return props.companies;
-}
-
-function employeeOptions(row) {
-    return companyOptionBucket(row.company).employees;
-}
-
-function projectOptions(row) {
-    if (!row.company) {
-        return [];
+async function appendAiDraftRows(draftRows) {
+    if (draftRows.length === 0) {
+        submitError.value = 'No draft rows were found in the AI response.';
+        return;
     }
 
-    if (!row.employee) {
-        return companyOptionBucket(row.company).projects;
-    }
+    const nextRows = draftRows.map((entry) => makeRow({
+        company: entry.company_id ?? props.selectedCompanyId ?? null,
+        date: entry.entry_date ?? '',
+        employee: entry.employee_id ?? null,
+        project: entry.project_id ?? null,
+        task: entry.task_id ?? null,
+        hours: entry.hours ?? '',
+        _warnings: entry.warnings ?? [],
+    }));
 
-    return projectsByCompanyEmployee[companyEmployeeKey(row.company, row.employee)] ?? [];
-}
+    const existingRows = rows.value.filter((row) => rowHasInput(row));
+    rows.value = [...existingRows, ...nextRows];
+    errors.value = {};
+    submitError.value = null;
 
-function taskOptions(row) {
-    return companyOptionBucket(row.company).tasks;
-}
+    await Promise.all(nextRows.map(async (row) => {
+        await ensureCompanyOptions(row.company);
+        await ensureEmployeeProjects(row.company, row.employee);
+    }));
 
-function companyOptionBucket(companyId) {
-    if (!companyId) {
-        return { employees: [], projects: [], tasks: [] };
-    }
+    setActiveCell(existingRows.length, 0, { focus: true });
 
-    return optionsByCompany[companyId] ?? { employees: [], projects: [], tasks: [] };
-}
-
-function companyEmployeeKey(companyId, employeeId) {
-    return `${companyId}:${employeeId}`;
-}
-
-function selectCompany(row, option) {
-    row.company = option.id;
-    row.employee = null;
-    row.project = null;
-    row.task = null;
-    ensureCompanyOptions(row.company);
-}
-
-function selectEmployee(row, option) {
-    row.employee = option.id;
-    row.project = null;
-    ensureEmployeeProjects(row.company, row.employee);
-}
-
-function selectProject(row, option) {
-    row.project = option.id;
-}
-
-function selectTask(row, option) {
-    row.task = option.id;
+    const rowsWithWarnings = nextRows.filter((row) => row._warnings.length > 0).length;
+    toast.success('AI draft rows added.', {
+        description: rowsWithWarnings
+            ? `${rowsWithWarnings} ${rowsWithWarnings === 1 ? 'row needs' : 'rows need'} review before saving.`
+            : `${nextRows.length} ${nextRows.length === 1 ? 'row is' : 'rows are'} ready to review.`,
+    });
 }
 
 function selectDate(row, value) {
     row.date = value;
+    row._warnings = [];
 }
 
-async function ensureCompanyOptions(companyId) {
-    if (!companyId || optionsByCompany[companyId] || loadingOptions[companyId]) {
-        return;
+function isCellDisabled(column, row) {
+    if (column === 'company') {
+        return Boolean(props.selectedCompanyId);
     }
 
-    loadingOptions[companyId] = true;
-
-    try {
-        const [employees, projects, tasks] = await Promise.all([
-            getCompanyEmployees(companyId),
-            getCompanyProjects(companyId),
-            getCompanyTasks(companyId),
-        ]);
-
-        optionsByCompany[companyId] = { employees, projects, tasks };
-    } catch (exception) {
-        submitError.value = exception.message;
-    } finally {
-        loadingOptions[companyId] = false;
-    }
-}
-
-async function ensureEmployeeProjects(companyId, employeeId) {
-    if (!companyId || !employeeId) {
-        return;
+    if (column === 'employee') {
+        return !row.company;
     }
 
-    const key = companyEmployeeKey(companyId, employeeId);
-
-    if (projectsByCompanyEmployee[key]) {
-        return;
+    if (column === 'project') {
+        return !row.company || !row.employee;
     }
 
-    try {
-        projectsByCompanyEmployee[key] = await getCompanyProjects(companyId, employeeId);
-    } catch (exception) {
-        submitError.value = exception.message;
-    }
+    return false;
 }
 
 function fieldError(rowIndex, column) {
@@ -394,6 +354,11 @@ watch(
             @submit="submitBatch"
         />
 
+        <AiEntryAssistant
+            :selected-company-id="selectedCompanyId"
+            @drafted="appendAiDraftRows"
+        />
+
         <div v-if="submitError" class="border-b border-border px-3 py-2 text-sm text-destructive">
             {{ submitError }}
         </div>
@@ -456,16 +421,11 @@ watch(
                             v-else
                             :ref="(element) => registerCellRef(rowIndex, columnIndex, element)"
                             :active="activeCell.row === rowIndex && activeCell.column === columnIndex"
-                            :disabled="(column !== 'company' && !row.company) || (column === 'project' && !row.employee)"
+                            :disabled="isCellDisabled(column, row)"
                             :error="fieldError(rowIndex, column)"
                             :is-loading="Boolean(loadingOptions[row.company])"
                             :model-value="row[column]"
-                            :options="{
-                                company: companyOptions(),
-                                employee: employeeOptions(row),
-                                project: projectOptions(row),
-                                task: taskOptions(row),
-                            }[column]"
+                            :options="getOptions(column, row)"
                             :placeholder="cellPlaceholder(column)"
                             :search-placeholder="`Filter ${columnLabels[column].toLowerCase()}...`"
                             :close-signal="editorCloseSignal"
@@ -473,12 +433,7 @@ watch(
                             @focus="setActiveCell(rowIndex, columnIndex)"
                             @keydown="handleCellKeydown($event, rowIndex, columnIndex)"
                             @navigate="navigateFromCell(rowIndex, columnIndex, $event)"
-                            @select="{
-                                company: selectCompany,
-                                employee: selectEmployee,
-                                project: selectProject,
-                                task: selectTask,
-                            }[column](row, $event)"
+                            @select="handleSelect(column, row, $event)"
                         />
                         <p v-if="fieldError(rowIndex, column)" class="mt-1 px-1 text-xs text-destructive">
                             {{ fieldError(rowIndex, column) }}
@@ -486,7 +441,12 @@ watch(
                     </TableCell>
 
                     <TableCell>
-                        <Badge :variant="rowStatusVariant(row, rowIndex)">{{ rowStatus(row, rowIndex) }}</Badge>
+                        <div class="space-y-1">
+                            <Badge :variant="rowStatusVariant(row, rowIndex)">{{ rowStatus(row, rowIndex) }}</Badge>
+                            <p v-if="row._warnings.length" class="text-xs leading-4 text-muted-foreground">
+                                {{ row._warnings[0] }}
+                            </p>
+                        </div>
                     </TableCell>
                 </TableRow>
             </TableBody>
