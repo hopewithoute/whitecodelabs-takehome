@@ -1,5 +1,6 @@
 <script setup>
 import { Badge } from '@/components/ui/badge';
+import KeyboardShortcutLegend from './KeyboardShortcutLegend.vue';
 import RouteTabs from './RouteTabs.vue';
 import ScopeCompanySelect from './ScopeCompanySelect.vue';
 
@@ -35,6 +36,10 @@ const emit = defineEmits(['update:selectedCompanyId']);
                 />
                 <RouteTabs />
             </div>
+        </div>
+
+        <div class="mt-4 border-t border-border pt-3">
+            <KeyboardShortcutLegend />
         </div>
     </header>
 </template>

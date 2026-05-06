@@ -4,7 +4,10 @@ import TimeEntrySpreadsheet from '@/components/spreadsheet/TimeEntrySpreadsheet.
 defineProps({
     companies: { type: Array, default: () => [] },
     selectedCompanyId: { type: [String, null], default: null },
+    spreadsheetFocusKey: { type: Number, default: 0 },
 });
+
+const emit = defineEmits(['timeEntriesCreated']);
 </script>
 
 <template>
@@ -16,6 +19,11 @@ defineProps({
             </div>
         </div>
 
-        <TimeEntrySpreadsheet :companies="companies" :selected-company-id="selectedCompanyId" />
+        <TimeEntrySpreadsheet
+            :companies="companies"
+            :selected-company-id="selectedCompanyId"
+            :focus-key="spreadsheetFocusKey"
+            @submitted="emit('timeEntriesCreated')"
+        />
     </div>
 </template>
