@@ -6,7 +6,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 
 | Status | Slice | Scope | Next Step |
 | --- | --- | --- | --- |
-| Done | API Endpoints | Versioned read endpoints and `POST /api/v1/time-entries` are implemented and tested. | Build the Vue application shell around the completed API surface. |
+| In Progress | Spreadsheet Data Wiring | Company-scoped spreadsheet editors and batch submit are wired to real seeded API data. | Add History API binding and polish refresh/confirmation behavior after submit. |
 
 ## Must Have: Project Foundation
 
@@ -109,29 +109,34 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Status | Feature | Source Requirement | Acceptance Notes |
 | --- | --- | --- | --- |
 | Done | SPA app shell | Interface Requirements | Vue app mounts successfully from Laravel/Vite. |
-| Not Started | Top-level company selector | Interface Requirements | Selector appears above both views. |
-| Not Started | All default option | Interface Requirements | Default scope is `All`. |
+| Done | Branded CVA component variants | Design Direction, shadcn-vue Foundation | Base UI primitives expose CVA variants aligned to `docs/design.md`: near-black canvas, charcoal surfaces, hairline borders, lavender focus/primary states, compact 8px controls. |
+| Done | shadcn-vue base primitives | Frontend Component Inventory | Added required primitives: `button`, `input`, `badge`, `alert`, `table`, `popover`, `command`, `tooltip`, and `separator` before composing domain controls. |
+| Done | Domain app components | Frontend Component Inventory | Built `WorkspaceHeader`, `ScopeCompanySelect`, `RouteTabs`, and `ApiErrorBanner` from shadcn-vue primitives. |
+| Done | Top-level company selector | Interface Requirements | Selector appears above both views and loads company options from `GET /api/v1/companies`. |
+| Done | All default option | Interface Requirements | Default scope is `All companies`. |
 | Done | Route-backed tab navigation | Interface Requirements | New Entries and History appear as two tabs. |
-| Not Started | Scope state shared across views | Interface Requirements | Company selection affects both New Entries and History. |
-| Not Started | Clean usable visual design | UX / Design Expectations | Interface is reasonably polished and practical. |
+| Done | Scope state shared across views | Interface Requirements | Company selection is owned by `App.vue` and passed into New Entries and History route views. |
+| In Progress | Clean usable visual design | UX / Design Expectations | Dark Linear-inspired shell, branded primitives, and dense table surfaces are in place; final polish continues with API-backed cell editors. |
 
 ## Must Have: New Entries Frontend
 
 | Status | Feature | Source Requirement | Acceptance Notes |
 | --- | --- | --- | --- |
-| Not Started | Editable table | New Entries Tab | Each row represents one new time entry. |
-| Not Started | Required field order | New Entries Tab | Columns are Company, Date, Employee, Project, Task, Hours. |
-| Not Started | Add row control | New Entries Tab | User can add multiple rows before submitting. |
-| Not Started | Batch submit control | New Entries Tab | Sends all rows to API endpoint. |
-| Not Started | Company-scoped employee loading | New Entries Tab | Employee dropdown depends on row company. |
-| Not Started | Company-scoped project loading | New Entries Tab | Project dropdown depends on row company. |
-| Not Started | Employee-filtered project loading | Required Relationships | Project dropdown respects selected employee assignment. |
-| Not Started | Company-scoped task loading | New Entries Tab | Task dropdown depends on row company. |
-| Not Started | Dependent field clearing | New Entries Tab | Changing company/employee clears invalid dependent fields. |
-| Not Started | Keyboard-friendly tab flow | UX / Design Expectations | User can fill rows efficiently with Tab. |
-| Not Started | Frontend invalid-combination prevention | Goal | UI does not offer invalid employee/project/task combinations when API data is available. |
-| Not Started | Row-level validation display | Bonus / UX Baseline | Backend validation errors are visible beside affected fields. |
-| Not Started | Successful submit state | New Entries Tab | Saved rows clear or reset, and user gets confirmation. |
+| Done | Spreadsheet component foundation | Frontend Component Inventory, UX / Design Expectations | Built `TimeEntrySpreadsheet`, `SpreadsheetToolbar`, `SpreadsheetCell`, `SpreadsheetSelectCell`, and branded cell CVA variants. |
+| Done | Spreadsheet keyboard controller | UX / Design Expectations | `useSpreadsheetNavigation` handles Tab, Shift+Tab, Enter, arrows, active-cell state, DOM focus movement, keyboard-open trigger cells, and last-cell add-row behavior. |
+| Done | Editable table | New Entries Tab | Each row represents one new time entry with selectable company/employee/project/task, date input, and hours input. |
+| Done | Required field order | New Entries Tab | Columns are Company, Date, Employee, Project, Task, Hours. |
+| Done | Add row control | New Entries Tab | User can add multiple rows before submitting. |
+| Done | Batch submit control | New Entries Tab | Sends non-empty rows to `POST /api/v1/time-entries`. |
+| Done | Company-scoped employee loading | New Entries Tab | Employee dropdown depends on row company. |
+| Done | Company-scoped project loading | New Entries Tab | Project dropdown depends on row company. |
+| Done | Employee-filtered project loading | Required Relationships | Project dropdown respects selected employee assignment. |
+| Done | Company-scoped task loading | New Entries Tab | Task dropdown depends on row company. |
+| Done | Dependent field clearing | New Entries Tab | Changing company clears employee/project/task; changing employee clears project. |
+| Done | Keyboard-friendly tab flow | UX / Design Expectations | User can fill rows efficiently with Tab and open select/date cells from keyboard. |
+| Done | Frontend invalid-combination prevention | Goal | UI only offers company-scoped employees/projects/tasks and employee-assigned project options. |
+| Done | Row-level validation display | Bonus / UX Baseline | Backend validation errors are remapped to original row indexes and shown beside affected fields. |
+| Done | Successful submit state | New Entries Tab | Saved rows reset after success and the spreadsheet shows a compact saved confirmation. |
 
 ## Must Have: History Frontend
 
@@ -174,6 +179,8 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Not Started | README seed data notes | Submission Requirements | Explains demo companies, employees, projects, tasks, assignments. |
 | Not Started | README business rules | Evaluation Criteria | Documents validation and one-project-per-day rule. |
 | Not Started | README performance notes | Performance Considerations | Documents caching/loading/index decisions. |
+| Done | API documentation | API Requirements, Submission Quality | Scramble is installed and exposes interactive API documentation at `/docs/api` plus OpenAPI JSON at `/docs/api.json`. |
+| Done | Frontend component inventory | Interface Requirements, UX / Design Expectations | `docs/frontend_component_inventory.md` maps the required and bonus frontend components with spreadsheet-style keyboard entry as the main interaction. |
 | Not Started | README AI usage note | Submission Requirements | Points to AI conversation export. |
 | Not Started | AI conversation JSON export | Submission Requirements | Include JSON export, preferably `docs/ai-conversation.json`. |
 | Not Started | GitHub-ready repository | Submission Requirements | Repo contains backend, frontend, migrations, seeders, endpoints, README, AI export. |
