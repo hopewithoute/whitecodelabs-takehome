@@ -2,6 +2,12 @@
 
 Use this matrix to track progress against the exercise spec. Status values should stay simple: `Not Started`, `In Progress`, `Done`, or `Deferred`.
 
+## Current Slice
+
+| Status | Slice | Scope | Next Step |
+| --- | --- | --- | --- |
+| Done | API Endpoints | Versioned read endpoints and `POST /api/v1/time-entries` are implemented and tested. | Build the Vue application shell around the completed API surface. |
+
 ## Must Have: Project Foundation
 
 | Status | Feature | Source Requirement | Acceptance Notes |
@@ -59,42 +65,44 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | Employee project assignment seed data | Required Relationships | Seeded employees are assigned to one or more company projects. |
 | Done | Optional time entry seed data | History Tab | Seeds history rows, including multiple tasks for the same employee/project/date. |
 | Done | Model factories | Testing Decisions | Factories support API and relationship tests for all domain models. |
+| Done | Seed actions | Boilerplate Pattern | Seeder creates companies, employees, projects, tasks, assignments, and entries through action classes. |
+| Done | Seed DTOs | Boilerplate Pattern | Seeder action payloads use Spatie Data DTOs from `app/Data`. |
 
 ## Must Have: API Endpoints
 
 | Status | Feature | Source Requirement | Acceptance Notes |
 | --- | --- | --- | --- |
-| Not Started | Versioned API routes | API Requirements, Boilerplate Pattern | JSON API routes live under `/api/v1`. |
-| Not Started | `GET /api/v1/companies` | Interface Requirements | Returns company options for top-level and row company selectors. |
-| Not Started | `GET /api/v1/companies/{company}/employees` | New Entries Tab | Returns employees for selected company. |
-| Not Started | `GET /api/v1/companies/{company}/projects` | New Entries Tab | Returns projects for selected company. |
-| Not Started | Employee-filtered projects query | Required Relationships | Project options can be filtered by selected employee assignment. |
-| Not Started | `GET /api/v1/companies/{company}/tasks` | New Entries Tab | Returns tasks for selected company. |
-| Not Started | `GET /api/v1/time-entries` | History Tab | Returns read-only time entry history. |
-| Not Started | Company-filtered history query | Interface Requirements | History supports All and specific company scope. |
-| Not Started | `POST /api/v1/time-entries` | New Entries Tab | Accepts a batch of entries and persists valid rows. |
-| Not Started | API Resources | Boilerplate Pattern | Responses use consistent JSON resource shapes. |
-| Not Started | Thin API controllers | Boilerplate Pattern | Controllers orchestrate DTOs/actions/query builders and responses only. |
-| Not Started | Query builders where useful | Boilerplate Pattern | History and filtered option endpoints keep query logic out of controllers. |
+| Done | Versioned API routes | API Requirements, Boilerplate Pattern | JSON API routes live under `/api/v1` and are registered through `routes/api.php`. |
+| Done | `GET /api/v1/companies` | Interface Requirements | Returns company options for top-level and row company selectors, ordered by name. |
+| Done | `GET /api/v1/companies/{company}/employees` | New Entries Tab | Returns only employees for the selected company. |
+| Done | `GET /api/v1/companies/{company}/projects` | New Entries Tab | Returns only projects for the selected company. |
+| Done | Employee-filtered projects query | Required Relationships | Project options can be filtered by selected employee assignment through `filter[employee_id]`. |
+| Done | `GET /api/v1/companies/{company}/tasks` | New Entries Tab | Returns only tasks for the selected company. |
+| Done | `GET /api/v1/time-entries` | History Tab | Returns read-only time entry history with related company, employee, project, and task labels. |
+| Done | Company-filtered history query | Interface Requirements | History supports All and specific company scope through `filter[company_id]`. |
+| Done | `POST /api/v1/time-entries` | New Entries Tab | Accepts a batch of entries and persists valid rows through Spatie Data DTO validation and action-based transactional creation. |
+| Done | API Resources | Boilerplate Pattern | Responses use consistent JSON resource shapes for companies, employees, projects, tasks, and time entries. |
+| Done | Thin API controllers | Boilerplate Pattern | Controllers orchestrate resources, read-side services, and query builders only. |
+| Done | Query builders where useful | Boilerplate Pattern | History and filtered project endpoints use Spatie index query builders to keep filter, sort, and eager-loading logic out of controllers. |
 
 ## Must Have: Backend Validation And Invariants
 
 | Status | Feature | Source Requirement | Acceptance Notes |
 | --- | --- | --- | --- |
-| Not Started | DTO validation for batch payload | Boilerplate Pattern | Uses typed request data instead of raw controller validation. |
-| Not Started | Required field validation | Goal | Company, date, employee, project, task, and hours are required. |
-| Not Started | Date validation | Goal | Entry date must be a valid date. |
-| Not Started | Hours validation | Goal | Hours must be numeric and greater than zero. |
-| Not Started | Employee company membership validation | Goal | API rejects employee outside selected company. |
-| Not Started | Project company validation | Goal | API rejects project outside selected company. |
-| Not Started | Task company validation | Goal | API rejects task outside selected company. |
-| Not Started | Employee project assignment validation | Required Relationships | API rejects project not assigned to selected employee. |
-| Not Started | One project per employee per date validation | Business Rules | API rejects different projects for same employee/date. |
-| Not Started | Multiple tasks same project/date allowed | Business Rules | API allows same employee/date/project with multiple tasks. |
-| Not Started | Batch internal conflict validation | Business Rules | API rejects conflicting projects within the submitted batch. |
-| Not Started | Existing data conflict validation | Business Rules | API rejects conflicts with already-saved entries. |
-| Not Started | Transactional batch creation | Business Rules | A batch saves atomically; invalid batch persists nothing. |
-| Not Started | Row-field JSON validation errors | Bonus / UX Baseline | 422 errors are keyed like `entries.0.project_id`. |
+| Done | DTO validation for batch payload | Boilerplate Pattern | Uses `TimeEntryBatchData` instead of inline controller validation. |
+| Done | Required field validation | Goal | Company, date, employee, project, task, and hours are required per row. |
+| Done | Date validation | Goal | Entry date must be a valid date. |
+| Done | Hours validation | Goal | Hours must be numeric and greater than zero. |
+| Done | Employee company membership validation | Goal | API rejects employee outside selected company. |
+| Done | Project company validation | Goal | API rejects project outside selected company. |
+| Done | Task company validation | Goal | API rejects task outside selected company. |
+| Done | Employee project assignment validation | Required Relationships | API rejects project not assigned to selected employee. |
+| Done | One project per employee per date validation | Business Rules | API rejects different projects for same employee/date. |
+| Done | Multiple tasks same project/date allowed | Business Rules | API allows same employee/date/project with multiple tasks. |
+| Done | Batch internal conflict validation | Business Rules | API rejects conflicting projects within the submitted batch. |
+| Done | Existing data conflict validation | Business Rules | API rejects conflicts with already-saved entries. |
+| Done | Transactional batch creation | Business Rules | A batch saves atomically; invalid batch persists nothing. |
+| Done | Row-field JSON validation errors | Bonus / UX Baseline | 422 errors are keyed like `entries.0.project_id`. |
 
 ## Must Have: Frontend Application Shell
 
@@ -141,21 +149,21 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Status | Feature | Source Requirement | Acceptance Notes |
 | --- | --- | --- | --- |
 | Done | Relationship tests | Evaluation Criteria | Proves required model relationships and appended time-entry display fields work. |
-| Not Started | Company options API test | API Requirements | Endpoint returns expected company resource shape. |
-| Not Started | Company employees API test | New Entries Tab | Endpoint returns only employees for selected company. |
-| Not Started | Company projects API test | New Entries Tab | Endpoint returns only projects for selected company. |
-| Not Started | Employee-filtered projects API test | Required Relationships | Endpoint returns only projects assigned to selected employee. |
-| Not Started | Company tasks API test | New Entries Tab | Endpoint returns only tasks for selected company. |
-| Not Started | History API test | History Tab | Endpoint returns saved entries with required related labels. |
-| Not Started | Company-filtered history API test | Interface Requirements | Endpoint respects specific company filter. |
-| Not Started | Valid batch create API test | Business Rules | Valid batch persists and returns created resources. |
-| Not Started | Multiple tasks same project/date test | Business Rules | Same employee/date/project with different tasks is accepted. |
-| Not Started | Invalid employee/company test | Goal | API rejects employee outside company. |
-| Not Started | Invalid project/company test | Goal | API rejects project outside company. |
-| Not Started | Invalid task/company test | Goal | API rejects task outside company. |
-| Not Started | Invalid employee/project assignment test | Required Relationships | API rejects unassigned project for employee. |
-| Not Started | One-project-per-day conflict test | Business Rules | API rejects different project for same employee/date. |
-| Not Started | Invalid hours/date tests | Goal | API rejects invalid hours and dates. |
+| Done | Company options API test | API Requirements | Endpoint returns expected company resource shape. |
+| Done | Company employees API test | New Entries Tab | Endpoint returns only employees for selected company. |
+| Done | Company projects API test | New Entries Tab | Endpoint returns only projects for selected company. |
+| Done | Employee-filtered projects API test | Required Relationships | Endpoint returns only projects assigned to selected employee. |
+| Done | Company tasks API test | New Entries Tab | Endpoint returns only tasks for selected company. |
+| Done | History API test | History Tab | Endpoint returns saved entries with required related labels. |
+| Done | Company-filtered history API test | Interface Requirements | Endpoint respects specific company filter. |
+| Done | Valid batch create API test | Business Rules | Valid batch persists and returns created resources. |
+| Done | Multiple tasks same project/date test | Business Rules | Same employee/date/project with different tasks is accepted. |
+| Done | Invalid employee/company test | Goal | API rejects employee outside company. |
+| Done | Invalid project/company test | Goal | API rejects project outside company. |
+| Done | Invalid task/company test | Goal | API rejects task outside company. |
+| Done | Invalid employee/project assignment test | Required Relationships | API rejects unassigned project for employee. |
+| Done | One-project-per-day conflict test | Business Rules | API rejects different project for same employee/date. |
+| Done | Invalid hours/date tests | Goal | API rejects invalid hours and dates. |
 | Not Started | Optional frontend tests | Testing Decisions | Only required if a frontend test setup is added. |
 
 ## Must Have: Documentation And Submission
