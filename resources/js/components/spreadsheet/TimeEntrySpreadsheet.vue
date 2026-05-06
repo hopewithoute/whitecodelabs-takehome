@@ -17,6 +17,7 @@ import {
     getCompanyTasks,
 } from '@/api/options';
 import { spreadsheetColumns, useSpreadsheetNavigation } from '@/composables/useSpreadsheetNavigation';
+import SpreadsheetDateCell from './SpreadsheetDateCell.vue';
 import SpreadsheetSelectCell from './SpreadsheetSelectCell.vue';
 import SpreadsheetToolbar from './SpreadsheetToolbar.vue';
 
@@ -71,7 +72,7 @@ function addRow() {
 }
 
 function registerCellRef(row, column, element) {
-    setCellRef(row, column, element?.$el ?? element);
+    setCellRef(row, column, element);
 }
 
 function duplicateActiveRow() {
@@ -85,6 +86,26 @@ function clearRows() {
     errors.value = {};
     submitError.value = null;
     setActiveCell(0, 0, { focus: true });
+}
+
+function navigateFromCell(row, column, direction = 1) {
+    const nextColumn = column + direction;
+
+    if (nextColumn >= spreadsheetColumns.length) {
+        if (row === rowCount.value - 1) {
+            addRow();
+        }
+
+        setActiveCell(row + 1, 0, { focus: true });
+        return;
+    }
+
+    if (nextColumn < 0) {
+        setActiveCell(row - 1, spreadsheetColumns.length - 1, { focus: true });
+        return;
+    }
+
+    setActiveCell(row, nextColumn, { focus: true });
 }
 
 function companyOptions() {
@@ -123,22 +144,6 @@ function companyEmployeeKey(companyId, employeeId) {
     return `${companyId}:${employeeId}`;
 }
 
-function handleDateKeydown(event, row, column) {
-    if (event.key === 'F2' || (event.altKey && event.key === 'ArrowDown')) {
-        event.preventDefault();
-        setActiveCell(row, column);
-        event.currentTarget.showPicker?.();
-        return;
-    }
-
-    if (event.key === ' ') {
-        event.preventDefault();
-        return;
-    }
-
-    handleCellKeydown(event, row, column);
-}
-
 function selectCompany(row, option) {
     row.company = option.id;
     row.employee = null;
@@ -159,6 +164,10 @@ function selectProject(row, option) {
 
 function selectTask(row, option) {
     row.task = option.id;
+}
+
+function selectDate(row, value) {
+    row.date = value;
 }
 
 async function ensureCompanyOptions(companyId) {
@@ -351,19 +360,7 @@ watch(
                         class="p-1"
                     >
                         <Input
-                            v-if="column === 'date'"
-                            :ref="(element) => registerCellRef(rowIndex, columnIndex, element)"
-                            v-model="row.date"
-                            type="date"
-                            data-editor="trigger"
-                            class="h-9 bg-transparent"
-                            :data-active="activeCell.row === rowIndex && activeCell.column === columnIndex"
-                            :aria-invalid="Boolean(fieldError(rowIndex, column))"
-                            @focus="setActiveCell(rowIndex, columnIndex)"
-                            @keydown="handleDateKeydown($event, rowIndex, columnIndex)"
-                        />
-                        <Input
-                            v-else-if="column === 'hours'"
+                            v-if="column === 'hours'"
                             :ref="(element) => registerCellRef(rowIndex, columnIndex, element)"
                             v-model="row.hours"
                             inputmode="decimal"
@@ -373,6 +370,19 @@ watch(
                             :aria-invalid="Boolean(fieldError(rowIndex, column))"
                             @focus="setActiveCell(rowIndex, columnIndex)"
                             @keydown="handleCellKeydown($event, rowIndex, columnIndex)"
+                        />
+                        <SpreadsheetDateCell
+                            v-else-if="column === 'date'"
+                            :ref="(element) => registerCellRef(rowIndex, columnIndex, element)"
+                            :active="activeCell.row === rowIndex && activeCell.column === columnIndex"
+                            :error="fieldError(rowIndex, column)"
+                            :model-value="row.date"
+                            :placeholder="cellPlaceholder(column)"
+                            @commit="navigateFromCell(rowIndex, columnIndex)"
+                            @focus="setActiveCell(rowIndex, columnIndex)"
+                            @keydown="handleCellKeydown($event, rowIndex, columnIndex)"
+                            @navigate="navigateFromCell(rowIndex, columnIndex, $event)"
+                            @select="selectDate(row, $event)"
                         />
                         <SpreadsheetSelectCell
                             v-else
@@ -390,8 +400,10 @@ watch(
                             }[column]"
                             :placeholder="cellPlaceholder(column)"
                             :search-placeholder="`Filter ${columnLabels[column].toLowerCase()}...`"
+                            @commit="navigateFromCell(rowIndex, columnIndex)"
                             @focus="setActiveCell(rowIndex, columnIndex)"
                             @keydown="handleCellKeydown($event, rowIndex, columnIndex)"
+                            @navigate="navigateFromCell(rowIndex, columnIndex, $event)"
                             @select="{
                                 company: selectCompany,
                                 employee: selectEmployee,

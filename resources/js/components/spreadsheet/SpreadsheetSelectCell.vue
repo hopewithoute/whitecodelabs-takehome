@@ -24,7 +24,7 @@ const props = defineProps({
     searchPlaceholder: { type: String, default: 'Filter options...' },
 });
 
-const emit = defineEmits(['focus', 'keydown', 'select']);
+const emit = defineEmits(['commit', 'focus', 'keydown', 'navigate', 'select']);
 
 const open = ref(false);
 const trigger = ref(null);
@@ -50,9 +50,12 @@ async function openPicker() {
     await nextTick();
 }
 
-function selectOption(option) {
+async function selectOption(option) {
     emit('select', option);
     open.value = false;
+
+    await nextTick();
+    emit('commit');
 }
 
 function handleTriggerKeydown(event) {
@@ -63,6 +66,23 @@ function handleTriggerKeydown(event) {
 
     event.preventDefault();
     openPicker();
+}
+
+function handleEditorKeydown(event) {
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        open.value = false;
+        focus();
+        return;
+    }
+
+    if (event.key !== 'Tab') {
+        return;
+    }
+
+    event.preventDefault();
+    open.value = false;
+    emit('navigate', event.shiftKey ? -1 : 1);
 }
 
 defineExpose({ focus });
@@ -92,7 +112,12 @@ defineExpose({ focus });
             </Button>
         </PopoverTrigger>
 
-        <PopoverContent class="w-72 p-1" align="start">
+        <PopoverContent
+            class="w-72 p-1"
+            align="start"
+            @close-auto-focus.prevent
+            @keydown.capture="handleEditorKeydown"
+        >
             <Command>
                 <CommandInput :placeholder="searchPlaceholder" />
                 <CommandList>
