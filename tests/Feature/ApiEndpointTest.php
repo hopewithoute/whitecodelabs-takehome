@@ -133,6 +133,132 @@ class ApiEndpointTest extends TestCase
             ->assertJsonMissing(['id' => $outsideEntry->id]);
     }
 
+    public function test_time_entries_endpoint_paginates_history(): void
+    {
+        $company = Company::factory()->create();
+        $employee = Employee::factory()->create();
+        $project = Project::factory()->for($company)->create();
+        $task = Task::factory()->for($company)->create();
+
+        foreach (range(1, 12) as $day) {
+            TimeEntry::factory()
+                ->for($company)
+                ->for($employee)
+                ->for($project)
+                ->for($task)
+                ->create([
+                    'entry_date' => sprintf('2026-01-%02d', $day),
+                    'hours' => '1.00',
+                ]);
+        }
+
+        $response = $this->getJson('/api/v1/time-entries?per_page=5&page=2')
+            ->assertOk()
+            ->assertJsonCount(5, 'data')
+            ->assertJsonPath('data.0.entry_date', '2026-01-07')
+            ->assertJsonPath('meta.current_page', 2)
+            ->assertJsonPath('meta.last_page', 3)
+            ->assertJsonPath('meta.per_page', 5)
+            ->assertJsonPath('meta.total', 12)
+            ->assertJsonPath('meta.summary.total_hours', '12.00')
+            ->assertJsonPath('meta.summary.by_company.0.total_hours', '12.00')
+            ->assertJsonPath('meta.summary.by_employee.0.total_hours', '12.00')
+            ->assertJsonPath('meta.summary.by_project.0.total_hours', '12.00')
+            ->assertJsonPath('meta.summary.by_task.0.total_hours', '12.00')
+            ->assertJsonCount(12, 'meta.summary.by_date');
+
+        $this->assertNotNull($response->json('links.prev'));
+        $this->assertNotNull($response->json('links.next'));
+    }
+
+    public function test_time_entries_endpoint_returns_correct_history_summary_totals(): void
+    {
+        $acme = Company::factory()->create(['name' => 'Acme Operations']);
+        $globex = Company::factory()->create(['name' => 'Globex Services']);
+        $ava = Employee::factory()->create(['name' => 'Ava Chen']);
+        $ben = Employee::factory()->create(['name' => 'Ben Carter']);
+        $cora = Employee::factory()->create(['name' => 'Cora Diaz']);
+        $alpha = Project::factory()->for($acme)->create(['name' => 'Alpha']);
+        $beta = Project::factory()->for($acme)->create(['name' => 'Beta']);
+        $gamma = Project::factory()->for($globex)->create(['name' => 'Gamma']);
+        $design = Task::factory()->for($acme)->create(['name' => 'Design']);
+        $build = Task::factory()->for($acme)->create(['name' => 'Build']);
+        $support = Task::factory()->for($globex)->create(['name' => 'Support']);
+
+        TimeEntry::factory()->for($acme)->for($ava)->for($alpha)->for($design)->create([
+            'entry_date' => '2026-01-01',
+            'hours' => '2.00',
+        ]);
+        TimeEntry::factory()->for($acme)->for($ava)->for($alpha)->for($build)->create([
+            'entry_date' => '2026-01-01',
+            'hours' => '3.50',
+        ]);
+        TimeEntry::factory()->for($acme)->for($ben)->for($beta)->for($design)->create([
+            'entry_date' => '2026-01-02',
+            'hours' => '1.25',
+        ]);
+        TimeEntry::factory()->for($globex)->for($cora)->for($gamma)->for($support)->create([
+            'entry_date' => '2026-01-01',
+            'hours' => '4.00',
+        ]);
+
+        $summary = $this->getJson('/api/v1/time-entries?per_page=2')
+            ->assertOk()
+            ->assertJsonPath('meta.summary.total_hours', '10.75')
+            ->json('meta.summary');
+
+        $this->assertSame([
+            ['id' => $acme->id, 'name' => 'Acme Operations', 'total_hours' => '6.75'],
+            ['id' => $globex->id, 'name' => 'Globex Services', 'total_hours' => '4.00'],
+        ], $summary['by_company']);
+        $this->assertSame([
+            ['id' => $ava->id, 'name' => 'Ava Chen', 'total_hours' => '5.50'],
+            ['id' => $cora->id, 'name' => 'Cora Diaz', 'total_hours' => '4.00'],
+            ['id' => $ben->id, 'name' => 'Ben Carter', 'total_hours' => '1.25'],
+        ], $summary['by_employee']);
+        $this->assertSame([
+            ['id' => $alpha->id, 'name' => 'Alpha', 'total_hours' => '5.50'],
+            ['id' => $gamma->id, 'name' => 'Gamma', 'total_hours' => '4.00'],
+            ['id' => $beta->id, 'name' => 'Beta', 'total_hours' => '1.25'],
+        ], $summary['by_project']);
+        $this->assertSame([
+            ['id' => $support->id, 'name' => 'Support', 'total_hours' => '4.00'],
+            ['id' => $build->id, 'name' => 'Build', 'total_hours' => '3.50'],
+            ['id' => $design->id, 'name' => 'Design', 'total_hours' => '3.25'],
+        ], $summary['by_task']);
+        $this->assertSame([
+            ['date' => '2026-01-02', 'total_hours' => '1.25'],
+            ['date' => '2026-01-01', 'total_hours' => '9.50'],
+        ], $summary['by_date']);
+
+        $this->getJson("/api/v1/time-entries?filter[company_id]={$acme->id}&per_page=1")
+            ->assertOk()
+            ->assertJsonPath('meta.summary.total_hours', '6.75')
+            ->assertJsonCount(1, 'meta.summary.by_company')
+            ->assertJsonPath('meta.summary.by_company.0.id', $acme->id)
+            ->assertJsonPath('meta.summary.by_date.1.total_hours', '5.50');
+    }
+
+    public function test_time_entries_endpoint_can_search_history_by_related_labels(): void
+    {
+        [$company, $employee] = $this->createCompanyWithEmployees();
+        $project = Project::factory()->for($company)->create(['name' => 'Client Portal']);
+        $task = Task::factory()->for($company)->create(['name' => 'Implementation']);
+        $includedEntry = TimeEntry::factory()
+            ->for($company)
+            ->for($employee)
+            ->for($project)
+            ->for($task)
+            ->create();
+
+        TimeEntry::factory()->create();
+
+        $this->getJson('/api/v1/time-entries?filter[search]=Client')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $includedEntry->id)
+            ->assertJsonCount(1, 'data');
+    }
+
     public function test_time_entries_endpoint_creates_a_valid_batch(): void
     {
         [$company, $employee, $project, $task] = $this->createAssignableTimeEntryGraph();
@@ -164,6 +290,108 @@ class ApiEndpointTest extends TestCase
         $this->assertSame('3.50', $savedEntry->hours_display);
     }
 
+    public function test_time_entries_endpoint_updates_an_existing_entry(): void
+    {
+        [$company, $employee, $project, $task] = $this->createAssignableTimeEntryGraph();
+        $otherTask = Task::factory()->for($company)->create(['name' => 'Review']);
+        $timeEntry = TimeEntry::factory()
+            ->for($company)
+            ->for($employee)
+            ->for($project)
+            ->for($task)
+            ->create([
+                'entry_date' => '2026-01-15',
+                'hours' => '2.00',
+            ]);
+
+        $this->patchJson("/api/v1/time-entries/{$timeEntry->id}", [
+            'company_id' => $company->id,
+            'employee_id' => $employee->id,
+            'project_id' => $project->id,
+            'task_id' => $otherTask->id,
+            'entry_date' => '2026-01-16',
+            'hours' => '4.25',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.id', $timeEntry->id)
+            ->assertJsonPath('data.task.name', 'Review')
+            ->assertJsonPath('data.entry_date', '2026-01-16')
+            ->assertJsonPath('data.hours_display', '4.25');
+
+        $timeEntry->refresh();
+
+        $this->assertSame($otherTask->id, $timeEntry->task_id);
+        $this->assertSame('2026-01-16', $timeEntry->entry_date->toDateString());
+        $this->assertSame('4.25', $timeEntry->hours_display);
+    }
+
+    public function test_time_entries_endpoint_rejects_update_project_conflicts(): void
+    {
+        [$company, $employee, $firstProject, $task] = $this->createAssignableTimeEntryGraph();
+        $secondProject = Project::factory()->for($company)->create();
+        $otherTask = Task::factory()->for($company)->create();
+
+        app(EmployeeProjectAssignAction::class)->execute(new EmployeeProjectData(
+            company: $company,
+            employee: $employee,
+            project: $secondProject,
+        ));
+
+        TimeEntry::factory()
+            ->for($company)
+            ->for($employee)
+            ->for($firstProject)
+            ->for($task)
+            ->create(['entry_date' => '2026-01-15']);
+        $timeEntry = TimeEntry::factory()
+            ->for($company)
+            ->for($employee)
+            ->for($secondProject)
+            ->for($otherTask)
+            ->create(['entry_date' => '2026-01-16']);
+
+        $this->patchJson("/api/v1/time-entries/{$timeEntry->id}", [
+            'company_id' => $company->id,
+            'employee_id' => $employee->id,
+            'project_id' => $secondProject->id,
+            'task_id' => $otherTask->id,
+            'entry_date' => '2026-01-15',
+            'hours' => '1.00',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['entries.0.project_id']);
+    }
+
+    public function test_time_entries_endpoint_rejects_update_duplicate_task_conflicts(): void
+    {
+        [$company, $employee, $project, $task] = $this->createAssignableTimeEntryGraph();
+        $otherTask = Task::factory()->for($company)->create();
+
+        TimeEntry::factory()
+            ->for($company)
+            ->for($employee)
+            ->for($project)
+            ->for($task)
+            ->create(['entry_date' => '2026-01-15']);
+        $timeEntry = TimeEntry::factory()
+            ->for($company)
+            ->for($employee)
+            ->for($project)
+            ->for($otherTask)
+            ->create(['entry_date' => '2026-01-16']);
+
+        $this->patchJson("/api/v1/time-entries/{$timeEntry->id}", [
+            'company_id' => $company->id,
+            'employee_id' => $employee->id,
+            'project_id' => $project->id,
+            'task_id' => $task->id,
+            'entry_date' => '2026-01-15',
+            'hours' => '1.00',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['entries.0.task_id']);
+    }
+
     public function test_time_entries_endpoint_allows_multiple_tasks_for_same_project_and_date(): void
     {
         [$company, $employee, $project, $task] = $this->createAssignableTimeEntryGraph();
@@ -191,6 +419,89 @@ class ApiEndpointTest extends TestCase
         ])->assertCreated();
 
         $this->assertSame(2, TimeEntry::query()->count());
+    }
+
+    public function test_time_entries_endpoint_allows_new_task_for_existing_project_and_date(): void
+    {
+        [$company, $employee, $project, $task] = $this->createAssignableTimeEntryGraph();
+        $otherTask = Task::factory()->for($company)->create();
+
+        TimeEntry::factory()
+            ->for($company)
+            ->for($employee)
+            ->for($project)
+            ->for($task)
+            ->create(['entry_date' => '2026-01-15']);
+
+        $this->postJson('/api/v1/time-entries', [
+            'entries' => [[
+                'company_id' => $company->id,
+                'employee_id' => $employee->id,
+                'project_id' => $project->id,
+                'task_id' => $otherTask->id,
+                'entry_date' => '2026-01-15',
+                'hours' => '1.50',
+            ]],
+        ])->assertCreated();
+
+        $this->assertSame(2, TimeEntry::query()->count());
+    }
+
+    public function test_time_entries_endpoint_rejects_duplicate_task_rows_within_batch(): void
+    {
+        [$company, $employee, $project, $task] = $this->createAssignableTimeEntryGraph();
+
+        $this->postJson('/api/v1/time-entries', [
+            'entries' => [
+                [
+                    'company_id' => $company->id,
+                    'employee_id' => $employee->id,
+                    'project_id' => $project->id,
+                    'task_id' => $task->id,
+                    'entry_date' => '2026-01-15',
+                    'hours' => '2.00',
+                ],
+                [
+                    'company_id' => $company->id,
+                    'employee_id' => $employee->id,
+                    'project_id' => $project->id,
+                    'task_id' => $task->id,
+                    'entry_date' => '2026-01-15',
+                    'hours' => '1.50',
+                ],
+            ],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['entries.0.task_id', 'entries.1.task_id']);
+
+        $this->assertDatabaseCount('time_entries', 0);
+    }
+
+    public function test_time_entries_endpoint_rejects_duplicate_task_rows_against_existing_entries(): void
+    {
+        [$company, $employee, $project, $task] = $this->createAssignableTimeEntryGraph();
+
+        TimeEntry::factory()
+            ->for($company)
+            ->for($employee)
+            ->for($project)
+            ->for($task)
+            ->create(['entry_date' => '2026-01-15']);
+
+        $this->postJson('/api/v1/time-entries', [
+            'entries' => [[
+                'company_id' => $company->id,
+                'employee_id' => $employee->id,
+                'project_id' => $project->id,
+                'task_id' => $task->id,
+                'entry_date' => '2026-01-15',
+                'hours' => '1.50',
+            ]],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['entries.0.task_id']);
+
+        $this->assertSame(1, TimeEntry::query()->count());
     }
 
     public function test_time_entries_endpoint_rejects_invalid_company_relationships(): void
@@ -260,6 +571,29 @@ class ApiEndpointTest extends TestCase
             ]);
 
         $this->assertDatabaseCount('time_entries', 0);
+    }
+
+    public function test_time_entries_endpoint_returns_readable_required_field_messages(): void
+    {
+        $response = $this->postJson('/api/v1/time-entries', [
+            'entries' => [[
+                'company_id' => null,
+                'employee_id' => null,
+                'project_id' => null,
+                'task_id' => null,
+                'entry_date' => null,
+                'hours' => null,
+            ]],
+        ])->assertUnprocessable();
+
+        $errors = $response->json('errors');
+
+        $this->assertSame('Choose a company.', $errors['entries.0.company_id'][0]);
+        $this->assertSame('Choose an employee.', $errors['entries.0.employee_id'][0]);
+        $this->assertSame('Choose a project.', $errors['entries.0.project_id'][0]);
+        $this->assertSame('Choose a task.', $errors['entries.0.task_id'][0]);
+        $this->assertSame('Choose a date.', $errors['entries.0.entry_date'][0]);
+        $this->assertSame('Enter hours.', $errors['entries.0.hours'][0]);
     }
 
     public function test_time_entries_endpoint_rejects_unassigned_employee_project(): void
@@ -358,6 +692,59 @@ class ApiEndpointTest extends TestCase
         $this->assertSame(1, TimeEntry::query()->count());
     }
 
+    public function test_time_entries_endpoint_allows_shared_employee_on_different_company_projects_same_date(): void
+    {
+        [$firstCompany, $secondCompany, $employee, $firstProject, $secondProject, $firstTask, $secondTask] = $this->createSharedEmployeeCompanyGraphs();
+
+        $this->postJson('/api/v1/time-entries', [
+            'entries' => [
+                [
+                    'company_id' => $firstCompany->id,
+                    'employee_id' => $employee->id,
+                    'project_id' => $firstProject->id,
+                    'task_id' => $firstTask->id,
+                    'entry_date' => '2026-01-15',
+                    'hours' => '2.00',
+                ],
+                [
+                    'company_id' => $secondCompany->id,
+                    'employee_id' => $employee->id,
+                    'project_id' => $secondProject->id,
+                    'task_id' => $secondTask->id,
+                    'entry_date' => '2026-01-15',
+                    'hours' => '1.50',
+                ],
+            ],
+        ])->assertCreated();
+
+        $this->assertSame(2, TimeEntry::query()->count());
+    }
+
+    public function test_time_entries_endpoint_allows_shared_employee_existing_conflict_only_per_company(): void
+    {
+        [$firstCompany, $secondCompany, $employee, $firstProject, $secondProject, $firstTask, $secondTask] = $this->createSharedEmployeeCompanyGraphs();
+
+        TimeEntry::factory()
+            ->for($firstCompany)
+            ->for($employee)
+            ->for($firstProject)
+            ->for($firstTask)
+            ->create(['entry_date' => '2026-01-15']);
+
+        $this->postJson('/api/v1/time-entries', [
+            'entries' => [[
+                'company_id' => $secondCompany->id,
+                'employee_id' => $employee->id,
+                'project_id' => $secondProject->id,
+                'task_id' => $secondTask->id,
+                'entry_date' => '2026-01-15',
+                'hours' => '1.50',
+            ]],
+        ])->assertCreated();
+
+        $this->assertSame(2, TimeEntry::query()->count());
+    }
+
     /**
      * @return array{0: Company, 1: Employee, 2: Employee}
      */
@@ -391,5 +778,39 @@ class ApiEndpointTest extends TestCase
         ));
 
         return [$company, $employee, $project, $task];
+    }
+
+    /**
+     * @return array{0: Company, 1: Company, 2: Employee, 3: Project, 4: Project, 5: Task, 6: Task}
+     */
+    private function createSharedEmployeeCompanyGraphs(): array
+    {
+        $firstCompany = Company::factory()->create();
+        $secondCompany = Company::factory()->create();
+        $employee = Employee::factory()->create();
+        $firstProject = Project::factory()->for($firstCompany)->create();
+        $secondProject = Project::factory()->for($secondCompany)->create();
+        $firstTask = Task::factory()->for($firstCompany)->create();
+        $secondTask = Task::factory()->for($secondCompany)->create();
+
+        foreach ([$firstCompany, $secondCompany] as $company) {
+            app(CompanyEmployeeAttachAction::class)->execute(new CompanyEmployeeData(
+                company: $company,
+                employee: $employee,
+            ));
+        }
+
+        app(EmployeeProjectAssignAction::class)->execute(new EmployeeProjectData(
+            company: $firstCompany,
+            employee: $employee,
+            project: $firstProject,
+        ));
+        app(EmployeeProjectAssignAction::class)->execute(new EmployeeProjectData(
+            company: $secondCompany,
+            employee: $employee,
+            project: $secondProject,
+        ));
+
+        return [$firstCompany, $secondCompany, $employee, $firstProject, $secondProject, $firstTask, $secondTask];
     }
 }

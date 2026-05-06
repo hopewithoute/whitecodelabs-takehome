@@ -8,6 +8,7 @@ const nextWeekDate = formatDate(addDays(today, 8));
 const weekStartDate = formatDate(addDays(addDays(today, 8), -addDays(today, 8).getDay()));
 const weekEndDate = formatDate(addDays(addDays(today, 8), 6 - addDays(today, 8).getDay()));
 const nextMonthSameDayDate = formatDate(shiftMonth(parseDate(weekEndDate), 1));
+const nextMonthSameDayDisplay = formatDisplayDate(parseDate(nextMonthSameDayDate));
 
 test.beforeEach(async ({ page }) => {
     await page.goto('/entries/new');
@@ -43,6 +44,7 @@ test('cell editor commits advance focus through company, date, and employee cell
     await expect(page.locator(`[data-date="${nextMonthSameDayDate}"]`)).toBeFocused();
 
     await page.keyboard.press('Enter');
+    await expect(firstRow.getByRole('button', { name: nextMonthSameDayDisplay })).toBeVisible();
     await expect(firstRow.getByRole('button', { name: 'Select employee' })).toBeFocused();
 
     await page.keyboard.press('Enter');
@@ -63,6 +65,59 @@ test('tab exits an open picker into the next spreadsheet cell', async ({ page })
     await page.keyboard.press('Tab');
     await expect(firstRow.getByRole('button', { name: 'Select employee' })).toBeFocused();
 });
+
+test('spreadsheet actions are available through keyboard shortcuts', async ({ page }) => {
+    const firstRow = page.locator('tbody tr').first();
+
+    await selectSpreadsheetOption(page, firstRow, 'Select company', 'Acme Operations');
+    await firstRow.getByRole('button', { name: 'Acme Operations' }).focus();
+
+    await page.keyboard.press('Control+D');
+    await expect(page.getByText('3 rows')).toBeVisible();
+    await expect(page.locator('tbody tr').nth(1).getByPlaceholder('0.00')).toBeFocused();
+
+    await page.keyboard.press('Control+Shift+Enter');
+    await expect(page.getByText('4 rows')).toBeVisible();
+    await expect(page.locator('tbody tr').nth(3).getByRole('button', { name: 'Select company' })).toBeFocused();
+});
+
+test('global shortcuts switch tabs and focus the spreadsheet', async ({ page }) => {
+    const legend = page.getByLabel('Keyboard shortcuts');
+
+    await expect(legend.getByText('Shortcuts')).toBeVisible();
+    await expect(legend.getByText('New entries', { exact: true })).toBeVisible();
+    await expect(legend.getByText('History', { exact: true })).toBeVisible();
+    await expect(legend.getByText('Spreadsheet', { exact: true })).toBeVisible();
+
+    await page.keyboard.press('Alt+H');
+    await expect(page.getByRole('heading', { name: 'History' })).toBeVisible();
+
+    await page.keyboard.press('Alt+N');
+    await expect(page.getByRole('heading', { name: 'New Entries' })).toBeVisible();
+
+    await page.keyboard.press('Alt+E');
+    await expect(page.locator('tbody tr').first().getByRole('button', { name: 'Select company' })).toBeFocused();
+});
+
+test('batch submit shortcut keeps row-level validation readable', async ({ page }) => {
+    const firstRow = page.locator('tbody tr').first();
+
+    await selectSpreadsheetOption(page, firstRow, 'Select company', 'Acme Operations');
+    await firstRow.getByRole('button', { name: 'Acme Operations' }).focus();
+
+    await page.keyboard.press('Control+Enter');
+
+    await expect(firstRow.getByText('Choose a date.')).toBeVisible();
+    await expect(firstRow.getByText('Choose an employee.')).toBeVisible();
+    await expect(firstRow.getByText('Choose a project.')).toBeVisible();
+    await expect(firstRow.getByText('Choose a task.')).toBeVisible();
+    await expect(firstRow.getByText('Enter hours.')).toBeVisible();
+});
+
+async function selectSpreadsheetOption(page, row, triggerName, optionName) {
+    await row.getByRole('button', { name: triggerName }).click();
+    await page.getByRole('option', { name: optionName }).click();
+}
 
 function parseDate(value) {
     const [year, month, day] = value.split('-').map((part) => Number.parseInt(part, 10));
@@ -87,4 +142,12 @@ function formatDate(date) {
     const day = `${date.getDate()}`.padStart(2, '0');
 
     return `${year}-${month}-${day}`;
+}
+
+function formatDisplayDate(date) {
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
 }
