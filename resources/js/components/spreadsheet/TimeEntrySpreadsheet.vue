@@ -38,7 +38,7 @@ const editorCloseSignal = ref(0);
 
 const rowCount = computed(() => rows.value.length);
 const { activeCell, handleCellKeydown, setActiveCell, setCellRef } = useSpreadsheetNavigation(rowCount, addRow);
-const { loadingOptions, getOptions, handleSelect, ensureCompanyOptions, ensureEmployeeProjects } = useSpreadsheetOptions(
+const { loadingOptions, getOptions, handleSelect, ensureCompanyOptions } = useSpreadsheetOptions(
     companiesRef,
     (message) => { submitError.value = message; },
 );
@@ -71,6 +71,7 @@ function makeRow(overrides = {}) {
         task: null,
         hours: '',
         _warnings: [],
+        _fieldWarnings: {},
         ...overrides,
     };
 }
@@ -97,6 +98,26 @@ function duplicateActiveRow() {
 
     rows.value.splice(activeCell.row + 1, 0, { ...source, _key: nextDraftRowId.value++ });
     setActiveCell(duplicateRow, spreadsheetColumns.indexOf('hours'), { focus: true });
+    nextTick(closeCellEditors);
+}
+
+function deleteActiveRow() {
+    closeCellEditors();
+
+    if (rows.value.length <= 1) {
+        rows.value = [makeRow()];
+        errors.value = {};
+        submitError.value = null;
+        setActiveCell(0, activeCell.column, { focus: true });
+        return;
+    }
+
+    const deletedRow = activeCell.row;
+
+    rows.value.splice(deletedRow, 1);
+    errors.value = {};
+    submitError.value = null;
+    setActiveCell(Math.min(deletedRow, rows.value.length - 1), activeCell.column, { focus: true });
     nextTick(closeCellEditors);
 }
 
@@ -158,6 +179,13 @@ function handleSpreadsheetShortcut(event) {
         event.preventDefault();
         event.stopPropagation();
         duplicateActiveRow();
+        return;
+    }
+
+    if (event.key === 'Backspace' && event.shiftKey && !event.altKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        deleteActiveRow();
     }
 }
 
@@ -175,6 +203,7 @@ async function appendAiDraftRows(draftRows) {
         task: entry.task_id ?? null,
         hours: entry.hours ?? '',
         _warnings: entry.warnings ?? [],
+        _fieldWarnings: entry.field_warnings ?? {},
     }));
 
     const existingRows = rows.value.filter((row) => rowHasInput(row));
@@ -184,7 +213,6 @@ async function appendAiDraftRows(draftRows) {
 
     await Promise.all(nextRows.map(async (row) => {
         await ensureCompanyOptions(row.company);
-        await ensureEmployeeProjects(row.company, row.employee);
     }));
 
     setActiveCell(existingRows.length, 0, { focus: true });
@@ -199,7 +227,21 @@ async function appendAiDraftRows(draftRows) {
 
 function selectDate(row, value) {
     row.date = value;
-    row._warnings = [];
+    clearFieldWarning(row, 'entry_date');
+}
+
+function handleCellSelect(column, row, option) {
+    handleSelect(column, row, option);
+    clearFieldWarning(row, errorFieldByColumn[column]);
+}
+
+function clearFieldWarning(row, field) {
+    if (!field || !row._fieldWarnings?.[field]) {
+        return;
+    }
+
+    const { [field]: _removed, ...remainingWarnings } = row._fieldWarnings;
+    row._fieldWarnings = remainingWarnings;
 }
 
 function isCellDisabled(column, row) {
@@ -207,12 +249,8 @@ function isCellDisabled(column, row) {
         return Boolean(props.selectedCompanyId);
     }
 
-    if (column === 'employee') {
+    if (column === 'employee' || column === 'project' || column === 'task') {
         return !row.company;
-    }
-
-    if (column === 'project') {
-        return !row.company || !row.employee;
     }
 
     return false;
@@ -222,8 +260,16 @@ function fieldError(rowIndex, column) {
     return errors.value[`entries.${rowIndex}.${errorFieldByColumn[column]}`]?.[0] ?? null;
 }
 
+function fieldWarning(row, column) {
+    return row._fieldWarnings?.[errorFieldByColumn[column]]?.[0] ?? null;
+}
+
 function rowHasErrors(rowIndex) {
     return Object.keys(errors.value).some((key) => key.startsWith(`entries.${rowIndex}.`));
+}
+
+function rowHasWarnings(row) {
+    return Object.values(row._fieldWarnings ?? {}).some((messages) => messages.length > 0);
 }
 
 function rowIsComplete(row) {
@@ -237,6 +283,10 @@ function rowHasInput(row) {
 function rowStatus(row, rowIndex) {
     if (rowHasErrors(rowIndex)) {
         return 'Needs fix';
+    }
+
+    if (rowHasWarnings(row)) {
+        return 'Review';
     }
 
     return rowIsComplete(row) ? 'Ready' : 'Draft';
@@ -350,6 +400,7 @@ watch(
             :is-submitting="submitState === 'submitting'"
             @add-row="addRow"
             @duplicate-row="duplicateActiveRow"
+            @delete-row="deleteActiveRow"
             @clear-rows="clearRows"
             @submit="submitBatch"
         />
@@ -382,71 +433,69 @@ watch(
             </TableHeader>
             <TableBody>
                 <TableRow v-for="(row, rowIndex) in rows" :key="row._key" class="hover:bg-transparent">
-                    <TableCell class="text-center font-mono text-xs text-muted-foreground">
+                    <TableCell class="align-top pt-4 text-center font-mono text-xs text-muted-foreground">
                         {{ rowIndex + 1 }}
                     </TableCell>
 
                     <TableCell
                         v-for="(column, columnIndex) in spreadsheetColumns"
                         :key="column"
-                        class="p-1"
+                        class="p-1 align-top"
                     >
-                        <Input
-                            v-if="column === 'hours'"
-                            :ref="(element) => registerCellRef(rowIndex, columnIndex, element)"
-                            v-model="row.hours"
-                            inputmode="decimal"
-                            placeholder="0.00"
-                            class="h-9 bg-transparent text-right tabular-nums"
-                            :data-active="activeCell.row === rowIndex && activeCell.column === columnIndex"
-                            :aria-invalid="Boolean(fieldError(rowIndex, column))"
-                            @focus="setActiveCell(rowIndex, columnIndex)"
-                            @keydown="handleCellKeydown($event, rowIndex, columnIndex)"
-                        />
-                        <SpreadsheetDateCell
-                            v-else-if="column === 'date'"
-                            :ref="(element) => registerCellRef(rowIndex, columnIndex, element)"
-                            :active="activeCell.row === rowIndex && activeCell.column === columnIndex"
-                            :error="fieldError(rowIndex, column)"
-                            :model-value="row.date"
-                            :placeholder="cellPlaceholder(column)"
-                            :close-signal="editorCloseSignal"
-                            @commit="navigateFromCell(rowIndex, columnIndex)"
-                            @focus="setActiveCell(rowIndex, columnIndex)"
-                            @keydown="handleCellKeydown($event, rowIndex, columnIndex)"
-                            @navigate="navigateFromCell(rowIndex, columnIndex, $event)"
-                            @select="selectDate(row, $event)"
-                        />
-                        <SpreadsheetSelectCell
-                            v-else
-                            :ref="(element) => registerCellRef(rowIndex, columnIndex, element)"
-                            :active="activeCell.row === rowIndex && activeCell.column === columnIndex"
-                            :disabled="isCellDisabled(column, row)"
-                            :error="fieldError(rowIndex, column)"
-                            :is-loading="Boolean(loadingOptions[row.company])"
-                            :model-value="row[column]"
-                            :options="getOptions(column, row)"
-                            :placeholder="cellPlaceholder(column)"
-                            :search-placeholder="`Filter ${columnLabels[column].toLowerCase()}...`"
-                            :close-signal="editorCloseSignal"
-                            @commit="navigateFromCell(rowIndex, columnIndex)"
-                            @focus="setActiveCell(rowIndex, columnIndex)"
-                            @keydown="handleCellKeydown($event, rowIndex, columnIndex)"
-                            @navigate="navigateFromCell(rowIndex, columnIndex, $event)"
-                            @select="handleSelect(column, row, $event)"
-                        />
-                        <p v-if="fieldError(rowIndex, column)" class="mt-1 px-1 text-xs text-destructive">
-                            {{ fieldError(rowIndex, column) }}
-                        </p>
-                    </TableCell>
-
-                    <TableCell>
-                        <div class="space-y-1">
-                            <Badge :variant="rowStatusVariant(row, rowIndex)">{{ rowStatus(row, rowIndex) }}</Badge>
-                            <p v-if="row._warnings.length" class="text-xs leading-4 text-muted-foreground">
-                                {{ row._warnings[0] }}
+                        <div class="grid min-h-14 grid-rows-[2.25rem_1rem] items-start gap-1">
+                            <Input
+                                v-if="column === 'hours'"
+                                :ref="(element) => registerCellRef(rowIndex, columnIndex, element)"
+                                v-model="row.hours"
+                                inputmode="decimal"
+                                placeholder="0.00"
+                                class="h-9 bg-transparent text-right tabular-nums"
+                                :data-active="activeCell.row === rowIndex && activeCell.column === columnIndex"
+                                :aria-invalid="Boolean(fieldError(rowIndex, column))"
+                                @input="clearFieldWarning(row, errorFieldByColumn[column])"
+                                @focus="setActiveCell(rowIndex, columnIndex)"
+                                @keydown="handleCellKeydown($event, rowIndex, columnIndex)"
+                            />
+                            <SpreadsheetDateCell
+                                v-else-if="column === 'date'"
+                                :ref="(element) => registerCellRef(rowIndex, columnIndex, element)"
+                                :active="activeCell.row === rowIndex && activeCell.column === columnIndex"
+                                :error="fieldError(rowIndex, column)"
+                                :model-value="row.date"
+                                :placeholder="cellPlaceholder(column)"
+                                :close-signal="editorCloseSignal"
+                                @commit="navigateFromCell(rowIndex, columnIndex)"
+                                @focus="setActiveCell(rowIndex, columnIndex)"
+                                @keydown="handleCellKeydown($event, rowIndex, columnIndex)"
+                                @navigate="navigateFromCell(rowIndex, columnIndex, $event)"
+                                @select="selectDate(row, $event)"
+                            />
+                            <SpreadsheetSelectCell
+                                v-else
+                                :ref="(element) => registerCellRef(rowIndex, columnIndex, element)"
+                                :active="activeCell.row === rowIndex && activeCell.column === columnIndex"
+                                :disabled="isCellDisabled(column, row)"
+                                :error="fieldError(rowIndex, column)"
+                                :is-loading="Boolean(loadingOptions[row.company])"
+                                :model-value="row[column]"
+                                :options="getOptions(column, row)"
+                                :placeholder="cellPlaceholder(column)"
+                                :search-placeholder="`Filter ${columnLabels[column].toLowerCase()}...`"
+                                :close-signal="editorCloseSignal"
+                                @commit="navigateFromCell(rowIndex, columnIndex)"
+                                @focus="setActiveCell(rowIndex, columnIndex)"
+                                @keydown="handleCellKeydown($event, rowIndex, columnIndex)"
+                                @navigate="navigateFromCell(rowIndex, columnIndex, $event)"
+                                @select="handleCellSelect(column, row, $event)"
+                            />
+                            <p class="min-h-4 truncate px-1 text-xs leading-4" :class="fieldError(rowIndex, column) ? 'text-destructive' : 'text-muted-foreground'">
+                                {{ fieldError(rowIndex, column) ?? fieldWarning(row, column) ?? '' }}
                             </p>
                         </div>
+                    </TableCell>
+
+                    <TableCell class="align-top pt-3">
+                        <Badge :variant="rowStatusVariant(row, rowIndex)">{{ rowStatus(row, rowIndex) }}</Badge>
                     </TableCell>
                 </TableRow>
             </TableBody>

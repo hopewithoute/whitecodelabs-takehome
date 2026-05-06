@@ -82,6 +82,7 @@ readonly class ParseTimeEntryDraftsAction
         $employee = $this->resolveRelated($company?->employees, $entry['employee'] ?? null);
         $project = $this->resolveRelated($company?->projects, $entry['project'] ?? null);
         $task = $this->resolveRelated($company?->tasks, $entry['task'] ?? null);
+        $entryDate = $this->parseDate($entry['entry_date'] ?? null);
 
         return [
             'company_id' => $company?->id,
@@ -92,9 +93,10 @@ readonly class ParseTimeEntryDraftsAction
             'project_name' => $project?->name ?? $this->text($entry['project'] ?? null),
             'task_id' => $task?->id,
             'task_name' => $task?->name ?? $this->text($entry['task'] ?? null),
-            'entry_date' => $this->parseDate($entry['entry_date'] ?? null),
+            'entry_date' => $entryDate,
             'hours' => $entry['hours'] ?? null,
             'warnings' => $this->collectWarnings($entry, $company, $employee, $project, $task),
+            'field_warnings' => $this->collectFieldWarnings($entry, $company, $employee, $project, $task, $entryDate),
         ];
     }
 
@@ -171,6 +173,84 @@ readonly class ParseTimeEntryDraftsAction
         }
 
         return $warnings->unique()->values()->all();
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    private function collectFieldWarnings(
+        array $entry,
+        ?Company $company,
+        mixed $employee,
+        mixed $project,
+        mixed $task,
+        ?string $entryDate,
+    ): array {
+        $warnings = [];
+
+        if (! empty($entry['warning'] ?? null)) {
+            $this->addFieldWarning($warnings, $this->warningField($entry['warning']), $entry['warning']);
+        }
+
+        if (! $company instanceof Company) {
+            $this->addFieldWarning($warnings, 'company_id', 'Choose a company before saving this row.');
+        }
+
+        if (! $employee instanceof Employee) {
+            $this->addFieldWarning($warnings, 'employee_id', 'Choose a matching employee.');
+        }
+
+        if (! $project instanceof Project) {
+            $this->addFieldWarning($warnings, 'project_id', 'Choose a matching project.');
+        }
+
+        if (! $task instanceof Task) {
+            $this->addFieldWarning($warnings, 'task_id', 'Choose a matching task.');
+        }
+
+        if ($this->text($entry['entry_date'] ?? null) !== '' && $entryDate === null) {
+            $this->addFieldWarning($warnings, 'entry_date', 'Choose a matching date.');
+        }
+
+        if (($entry['hours'] ?? null) === null || $entry['hours'] === 0) {
+            $this->addFieldWarning($warnings, 'hours', 'Check the drafted hours.');
+        }
+
+        if (
+            $employee instanceof Employee
+            && $project instanceof Project
+            && $company instanceof Company
+            && ! $this->employeeIsAssignedToProject($employee, $project, $company)
+        ) {
+            $this->addFieldWarning($warnings, 'project_id', 'The matched employee is not assigned to the matched project.');
+        }
+
+        return collect($warnings)
+            ->map(fn (array $messages): array => collect($messages)->unique()->values()->all())
+            ->all();
+    }
+
+    /**
+     * @param  array<string, list<string>>  $warnings
+     */
+    private function addFieldWarning(array &$warnings, string $field, string $message): void
+    {
+        $warnings[$field][] = $message;
+    }
+
+    private function warningField(mixed $warning): string
+    {
+        $warning = $this->normalize($warning);
+
+        return match (true) {
+            str_contains($warning, 'company') => 'company_id',
+            str_contains($warning, 'employee') => 'employee_id',
+            str_contains($warning, 'project') => 'project_id',
+            str_contains($warning, 'task') => 'task_id',
+            str_contains($warning, 'date') => 'entry_date',
+            str_contains($warning, 'hour') || str_contains($warning, 'minute') => 'hours',
+            default => 'task_id',
+        };
     }
 
     private function employeeIsAssignedToProject(Employee $employee, Project $project, Company $company): bool

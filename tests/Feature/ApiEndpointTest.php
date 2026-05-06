@@ -490,7 +490,8 @@ class ApiEndpointTest extends TestCase
             ->assertJsonPath('data.entries.0.task_id', $task->id)
             ->assertJsonPath('data.entries.0.entry_date', '2026-01-15')
             ->assertJsonPath('data.entries.0.hours', 2.5)
-            ->assertJsonPath('data.entries.0.warnings', []);
+            ->assertJsonPath('data.entries.0.warnings', [])
+            ->assertJsonPath('data.entries.0.field_warnings', []);
 
         $this->assertDatabaseCount('time_entries', 0);
     }
@@ -528,6 +529,9 @@ class ApiEndpointTest extends TestCase
         $this->assertContains('Date was not provided.', $draft['warnings']);
         $this->assertContains('Choose a matching project.', $draft['warnings']);
         $this->assertContains('Choose a matching task.', $draft['warnings']);
+        $this->assertSame(['Date was not provided.'], $draft['field_warnings']['entry_date']);
+        $this->assertSame(['Choose a matching project.'], $draft['field_warnings']['project_id']);
+        $this->assertSame(['Choose a matching task.'], $draft['field_warnings']['task_id']);
         $this->assertDatabaseCount('time_entries', 0);
     }
 

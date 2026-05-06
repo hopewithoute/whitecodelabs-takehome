@@ -18,13 +18,14 @@ const shortcutGroups = [
     {
         title: 'General',
         shortcuts: [
-            { keys: ['?'], label: 'Shortcuts', description: 'Open this keyboard shortcut legend' },
+            { keys: ['Shift', '/'], label: 'Shortcuts', description: 'Open this keyboard shortcut legend' },
             { keys: ['Alt', 'N'], label: 'New entries', description: 'Switch to the new time entries form' },
             { keys: ['Alt', 'H'], label: 'History', description: 'Open the history view with past entries' },
             { keys: ['Alt', 'E'], label: 'Spreadsheet', description: 'Jump to the spreadsheet for quick data entry' },
             { keys: ['Alt', 'S'], label: 'Search', description: 'Focus the search field on the history page' },
             { keys: ['Ctrl', 'Enter'], label: 'Submit', description: 'Submit the current batch of entries' },
             { keys: ['Ctrl', 'D'], label: 'Duplicate row', description: 'Duplicate the selected row below' },
+            { keys: ['Ctrl', 'Shift', 'Backspace'], label: 'Delete row', description: 'Delete the active spreadsheet row' },
         ],
     },
     {
@@ -45,10 +46,19 @@ const shortcutGroups = [
         <PopoverTrigger as-child>
             <Button
                 variant="ghost"
-                size="icon-sm"
+                size="default"
+                class="h-10 gap-2 px-2.5 text-xs text-muted-foreground hover:text-foreground"
                 aria-label="Keyboard shortcuts"
             >
                 <Keyboard />
+                <span class="hidden sm:inline-flex items-center gap-0.5">
+                    <kbd class="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-foreground">
+                        Shift
+                    </kbd>
+                    <kbd class="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-foreground">
+                        /
+                    </kbd>
+                </span>
             </Button>
         </PopoverTrigger>
         <PopoverContent class="w-80" align="end">

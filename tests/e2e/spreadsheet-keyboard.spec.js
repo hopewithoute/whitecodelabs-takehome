@@ -79,6 +79,10 @@ test('spreadsheet actions are available through keyboard shortcuts', async ({ pa
     await page.keyboard.press('Control+Shift+Enter');
     await expect(page.getByText('4 rows')).toBeVisible();
     await expect(page.locator('tbody tr').nth(3).getByRole('button', { name: 'Select company' })).toBeFocused();
+
+    await page.keyboard.press('Control+Shift+Backspace');
+    await expect(page.getByText('3 rows')).toBeVisible();
+    await expect(page.locator('tbody tr').nth(2).getByRole('button', { name: 'Select company' })).toBeFocused();
 });
 
 test('global shortcuts switch tabs and focus the spreadsheet', async ({ page }) => {

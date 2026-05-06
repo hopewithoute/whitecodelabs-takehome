@@ -68,19 +68,20 @@ function autoResize(event) {
                 <span class="text-sm font-medium text-foreground">AI-assisted draft</span>
                 <Badge variant="outline">Draft only</Badge>
             </div>
-            <div class="flex gap-2">
-                <Textarea
-                    ref="textareaRef"
-                    v-model="prompt"
-                    class="min-h-10 max-h-40 flex-1 resize-none overflow-y-auto"
-                    rows="1"
-                    placeholder="Example: Ava worked 2h on Implementation and 1.5h on Review for Client Portal on Jan 15."
-                    :disabled="state === 'submitting'"
-                    @input="autoResize"
-                    @keydown="handleKeydown"
-                />
+            <Textarea
+                ref="textareaRef"
+                v-model="prompt"
+                class="min-h-16 max-h-36 resize-none overflow-y-auto"
+                rows="2"
+                placeholder="Example: Ava worked 2h on Implementation and 1.5h on Review for Client Portal on Jan 15."
+                :disabled="state === 'submitting'"
+                @input="autoResize"
+                @keydown="handleKeydown"
+            />
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-xs text-muted-foreground">Ctrl+Enter to submit</p>
                 <Button
-                    class="self-end"
+                    class="shrink-0"
                     :disabled="!canSubmit"
                     @click="submitPrompt"
                 >
@@ -88,7 +89,6 @@ function autoResize(event) {
                     {{ state === 'submitting' ? 'Drafting' : 'Draft rows' }}
                 </Button>
             </div>
-            <p class="text-xs text-muted-foreground">Ctrl+Enter to submit</p>
         </div>
 
         <Alert v-if="error" variant="destructive" class="mt-3">

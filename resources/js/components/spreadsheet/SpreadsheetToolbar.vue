@@ -10,7 +10,7 @@ defineProps({
     rowCount: { type: Number, required: true },
 });
 
-const emit = defineEmits(['add-row', 'duplicate-row', 'clear-rows', 'submit']);
+const emit = defineEmits(['add-row', 'duplicate-row', 'delete-row', 'clear-rows', 'submit']);
 </script>
 
 <template>
@@ -39,6 +39,15 @@ const emit = defineEmits(['add-row', 'duplicate-row', 'clear-rows', 'submit']);
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>Duplicate active row (Ctrl+D)</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                    <TooltipTrigger as-child>
+                        <Button variant="ghost" size="icon-sm" @click="emit('delete-row')">
+                            <Trash2 />
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Delete active row (Ctrl+Shift+Backspace)</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
