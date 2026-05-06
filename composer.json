@@ -8,12 +8,14 @@
     "require": {
         "php": "^8.3",
         "dedoc/scramble": "^0.13.22",
+        "laravel/ai": "^0.6.6",
         "laravel/framework": "^13.7",
         "laravel/tinker": "^3.0",
         "spatie/laravel-data": "^4.22",
         "spatie/laravel-query-builder": "^7.3"
     },
     "require-dev": {
+        "barryvdh/laravel-debugbar": "^4.2",
         "fakerphp/faker": "^1.23",
         "laravel/boost": "^2.4",
         "laravel/pail": "^1.2.5",
