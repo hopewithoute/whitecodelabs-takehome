@@ -21,16 +21,16 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 
 | Status | Feature | Source Requirement | Acceptance Notes |
 | --- | --- | --- | --- |
-| Not Started | `companies` migration | Required Database Structure | Includes UUID primary key, name, timestamps, useful constraints. |
-| Not Started | `employees` migration | Required Database Structure | Includes UUID primary key, name, optional email, timestamps, useful constraints. |
-| Not Started | `company_employee` migration | Required Relationships | Supports many-to-many company membership. |
-| Not Started | `projects` migration | Required Database Structure | Includes UUID primary key, company foreign key, name, timestamps. |
-| Not Started | `tasks` migration | Required Database Structure | Includes UUID primary key, company foreign key, name, timestamps. |
-| Not Started | `employee_project` migration | Required Relationships | Supports employee assignments to company projects. |
-| Not Started | `time_entries` migration | Required Database Structure | Stores company, employee, project, task, entry date, hours, timestamps. |
-| Not Started | Foreign key constraints | Required Relationships | Invalid referenced records cannot be persisted. |
-| Not Started | Useful indexes | Performance Considerations | Includes indexes for company/date, employee/date, project/date, and option lookups. |
-| Not Started | Hours storage precision | Goal | Uses decimal precision suitable for partial hours. |
+| Done | `companies` migration | Required Database Structure | Includes UUID primary key, unique name, and timestamps. |
+| Done | `employees` migration | Required Database Structure | Includes UUID primary key, name, nullable unique email, and timestamps. |
+| Done | `company_employee` migration | Required Relationships | Supports many-to-many company membership with unique company/employee pairs. |
+| Done | `projects` migration | Required Database Structure | Includes UUID primary key, company foreign key, name, timestamps, and company/name uniqueness. |
+| Done | `tasks` migration | Required Database Structure | Includes UUID primary key, company foreign key, name, timestamps, and company/name uniqueness. |
+| Done | `employee_project` migration | Required Relationships | Supports employee assignments to company projects with unique company/employee/project triples. |
+| Done | `time_entries` migration | Required Database Structure | Stores company, employee, project, task, entry date, hours, and timestamps. |
+| Done | Foreign key constraints | Required Relationships | All required references use foreign UUID constraints; cross-table company consistency remains a validation invariant. |
+| Done | Useful indexes | Performance Considerations | Includes indexes for company/date, employee/date, project/date, task, and option lookups. |
+| Done | Hours storage precision | Goal | Uses `decimal(5, 2)` for partial hours; positive value enforcement belongs to backend validation. |
 
 ## Must Have: Models And Relationships
 
