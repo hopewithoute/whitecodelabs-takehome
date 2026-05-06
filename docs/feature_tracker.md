@@ -142,12 +142,12 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 
 | Status | Feature | Source Requirement | Acceptance Notes |
 | --- | --- | --- | --- |
-| Not Started | Read-only history table | History Tab | Lists previously submitted time entries. |
-| Not Started | History core columns | History Tab | Shows Company, Date, Employee, Project, Task, Hours. |
-| Not Started | All-company history | Interface Requirements | Shows entries across all companies when scope is All. |
-| Not Started | Company-filtered history | Interface Requirements | Shows only selected company when scope is specific. |
+| Done | Read-only history table | History Tab | Lists submitted time entries from `GET /api/v1/time-entries`. |
+| Done | History core columns | History Tab | Shows Company, Date, Employee, Project, Task, Hours. |
+| Done | All-company history | Interface Requirements | Shows entries across all companies when scope is All. |
+| Done | Company-filtered history | Interface Requirements | Shows only selected company when scope is specific. |
 | Not Started | Refresh after submit | New Entries Tab, History Tab | Newly saved entries appear in History. |
-| Not Started | Empty state | UX / Design Expectations | Clear display when no entries exist. |
+| Done | Empty state | UX / Design Expectations | Clear display when no entries exist for the current scope. |
 
 ## Must Have: Tests
 
