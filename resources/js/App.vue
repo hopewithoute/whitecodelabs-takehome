@@ -1,35 +1,28 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router';
+import { ref } from 'vue';
+import { RouterView } from 'vue-router';
+import ApiErrorBanner from '@/components/app/ApiErrorBanner.vue';
+import WorkspaceHeader from '@/components/app/WorkspaceHeader.vue';
+import { useCompanies } from '@/composables/useCompanies';
+
+const selectedCompanyId = ref(null);
+const { companies, error, isLoading } = useCompanies();
 </script>
 
 <template>
     <main class="min-h-screen bg-background text-foreground">
-        <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
-            <header class="flex flex-col gap-4 border-b border-border pb-5">
-                <div>
-                    <p class="text-sm font-medium text-muted-foreground">Time entry</p>
-                    <h1 class="text-2xl font-semibold">Employee time entries</h1>
-                </div>
+        <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+            <WorkspaceHeader
+                v-model:selected-company-id="selectedCompanyId"
+                :companies="companies"
+                :is-loading-companies="isLoading"
+            />
 
-                <nav class="flex gap-2" aria-label="Primary">
-                    <RouterLink
-                        to="/entries/new"
-                        class="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-                        active-class="bg-accent text-accent-foreground"
-                    >
-                        New Entries
-                    </RouterLink>
-                    <RouterLink
-                        to="/entries/history"
-                        class="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-                        active-class="bg-accent text-accent-foreground"
-                    >
-                        History
-                    </RouterLink>
-                </nav>
-            </header>
+            <ApiErrorBanner :error="error" />
 
-            <RouterView />
+            <RouterView v-slot="{ Component }">
+                <component :is="Component" :companies="companies" :selected-company-id="selectedCompanyId" />
+            </RouterView>
         </div>
     </main>
 </template>
