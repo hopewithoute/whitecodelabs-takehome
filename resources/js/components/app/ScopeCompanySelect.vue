@@ -43,7 +43,7 @@ function selectCompany(id) {
         <PopoverTrigger as-child>
             <Button
                 variant="secondary"
-                class="h-9 min-w-56 justify-between border-border bg-card text-foreground"
+                class="h-10 min-w-56 justify-between border-border bg-card text-foreground"
                 :aria-expanded="open"
             >
                 <span class="truncate">{{ selectedLabel }}</span>

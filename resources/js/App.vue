@@ -69,7 +69,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleGlobalShortcut
 
 <template>
     <main class="min-h-screen bg-background text-foreground">
-        <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+        <div class="mx-auto flex w-full max-w-[88rem] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
             <WorkspaceHeader
                 v-model:selected-company-id="selectedCompanyId"
                 :companies="companies"
