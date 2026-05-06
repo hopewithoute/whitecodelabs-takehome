@@ -8,14 +8,14 @@ use App\Actions\EmployeeCreateAction;
 use App\Actions\EmployeeProjectAssignAction;
 use App\Actions\ProjectCreateAction;
 use App\Actions\TaskCreateAction;
-use App\Actions\TimeEntryCreateAction;
+use App\Actions\TimeEntries\CreateTimeEntryBatchAction;
 use App\Data\CompanyData;
 use App\Data\CompanyEmployeeData;
 use App\Data\EmployeeData;
 use App\Data\EmployeeProjectData;
 use App\Data\ProjectData;
 use App\Data\TaskData;
-use App\Data\TimeEntryData;
+use App\Data\TimeEntryBatchData;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -33,7 +33,7 @@ class DatabaseSeeder extends Seeder
         ProjectCreateAction $createProject,
         TaskCreateAction $createTask,
         EmployeeProjectAssignAction $assignProject,
-        TimeEntryCreateAction $createTimeEntry,
+        CreateTimeEntryBatchAction $createTimeEntries,
     ): void {
         $acme = $createCompany->execute(new CompanyData('Acme Operations'));
         $globex = $createCompany->execute(new CompanyData('Globex Services'));
@@ -72,9 +72,39 @@ class DatabaseSeeder extends Seeder
         $assignProject->execute(new EmployeeProjectData($globex, $dev, $globexMigration));
         $assignProject->execute(new EmployeeProjectData($globex, $dev, $globexSupport));
 
-        $createTimeEntry->execute(new TimeEntryData($acme, $ava, $acmeWebsite, $acmeDevelopment, '2026-01-05', '4.00'));
-        $createTimeEntry->execute(new TimeEntryData($acme, $ava, $acmeWebsite, $acmeReview, '2026-01-05', '2.00'));
-        $createTimeEntry->execute(new TimeEntryData($globex, $dev, $globexSupport, $globexSupportTask, '2026-01-06', '3.50'));
-        $createTimeEntry->execute(new TimeEntryData($globex, $cora, $globexMigration, $globexCleanup, '2026-01-07', '5.25'));
+        $createTimeEntries->execute(new TimeEntryBatchData([
+            [
+                'company_id' => $acme->id,
+                'employee_id' => $ava->id,
+                'project_id' => $acmeWebsite->id,
+                'task_id' => $acmeDevelopment->id,
+                'entry_date' => '2026-01-05',
+                'hours' => '4.00',
+            ],
+            [
+                'company_id' => $acme->id,
+                'employee_id' => $ava->id,
+                'project_id' => $acmeWebsite->id,
+                'task_id' => $acmeReview->id,
+                'entry_date' => '2026-01-05',
+                'hours' => '2.00',
+            ],
+            [
+                'company_id' => $globex->id,
+                'employee_id' => $dev->id,
+                'project_id' => $globexSupport->id,
+                'task_id' => $globexSupportTask->id,
+                'entry_date' => '2026-01-06',
+                'hours' => '3.50',
+            ],
+            [
+                'company_id' => $globex->id,
+                'employee_id' => $cora->id,
+                'project_id' => $globexMigration->id,
+                'task_id' => $globexCleanup->id,
+                'entry_date' => '2026-01-07',
+                'hours' => '5.25',
+            ],
+        ]));
     }
 }
