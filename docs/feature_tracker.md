@@ -6,7 +6,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 
 | Status | Slice | Scope | Next Step |
 | --- | --- | --- | --- |
-| In Progress | Invariant Validation And Bonus UX | Must-have create/view flow is API-backed, tested, and usable with real seeded data. | Add frontend regression coverage for backend invariant errors, then start the highest-value bonus work. |
+| In Progress | AI-Assisted Entry Bonus | Must-have create/view flow is API-backed, tested, and usable with real seeded data. | Remaining: polish AI-assisted draft behavior, reuse-previous-values auto-fill, optional date-range history filtering, and AI conversation export. |
 
 ## Must Have: Project Foundation
 
@@ -83,6 +83,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | Company-filtered history query | Interface Requirements | History supports All and specific company scope through `filter[company_id]`. |
 | Done | `POST /api/v1/time-entries` | New Entries Tab | Accepts a batch of entries and persists valid rows through Spatie Data DTO validation and action-based transactional creation. |
 | Done | API Resources | Boilerplate Pattern | Responses use consistent JSON resource shapes for companies, employees, projects, tasks, and time entries. |
+| In Progress | `POST /api/v1/ai/time-entry-drafts` | Super Bonus: AI-Assisted Entry | Parses plain-English notes into spreadsheet-ready draft rows without persisting; agent provider/model are env-selectable, defaulting to the DeepSeek adapter for local gateway compatibility. |
 | Done | Thin API controllers | Boilerplate Pattern | Controllers orchestrate resources, read-side services, and query builders only. |
 | Done | Query builders where useful | Boilerplate Pattern | History and filtered project endpoints use Spatie index query builders to keep filter, sort, and eager-loading logic out of controllers. |
 
@@ -174,7 +175,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | Invalid hours/date tests | Goal | API rejects invalid hours and dates. |
 | Done | Spreadsheet keyboard E2E tests | Testing Decisions | Playwright covers keyboard commit flow, popover calendar navigation, and tab exit from an open picker. |
 | Done | History E2E tests | Testing Decisions | Playwright covers API-backed history listing, global company scope filtering, and refresh after a new submit. |
-| Not Started | Frontend invariant validation E2E tests | Testing Decisions | Now that Playwright is configured, add a focused test that backend 422 invariant errors render beside the affected spreadsheet row fields. |
+| Done | Frontend invariant validation E2E tests | Testing Decisions | Playwright submits duplicate task rows and verifies the backend 422 invariant error renders beside the affected task field in both rows. |
 
 ## Must Have: Documentation And Submission
 
@@ -189,6 +190,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | AI implementation package preparation | Super Bonus: AI-Assisted Entry | `laravel/ai` is installed with config, stubs, and conversation-store migration; `.env.example` includes the OpenAI provider placeholder. |
 | Done | Local debug tooling | Development Quality | Laravel Debugbar is installed as a dev dependency with published config and `.env.example` toggle. |
 | Done | README AI usage note | Submission Requirements | Points to the expected `docs/ai-conversation.json` export path. |
+| In Progress | README AI-assisted entry notes | Super Bonus: AI-Assisted Entry | Documents structured draft-row generation, env-selectable provider/model settings, local-gateway DeepSeek adapter compatibility, and the SSE streaming decision for Laravel AI. |
 | Not Started | AI conversation JSON export | Submission Requirements | Include JSON export, preferably `docs/ai-conversation.json`. |
 | Not Started | GitHub-ready repository | Submission Requirements | Repo contains backend, frontend, migrations, seeders, endpoints, README, AI export. |
 
@@ -197,15 +199,15 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Status | Feature | Source Requirement | Acceptance Notes |
 | --- | --- | --- | --- |
 | Done | Edit existing entries | Bonus: Edit Existing Entries | History rows expose an edit action backed by `PATCH /api/v1/time-entries/{timeEntry}`; updates reuse DTO/action flow and backend invariants. |
-| In Progress | Faster data entry helpers | Bonus: Faster Data Entry | Duplicate active row exists; reuse previous values and insert/clear row actions remain optional. |
-| In Progress | Enhanced validation UX | Bonus: Better Validation UX | Row-level backend errors render beside affected cells; next step is locking invariant-error display with E2E coverage and polishing conflict messages if needed. |
-| Done | Summary totals | Bonus: Summary Totals | History API returns unpaginated filtered summary totals for total hours plus company, employee, project, task, and date groups; the History page renders the main grouped totals. |
+| Done | Faster data entry helpers | Bonus: Faster Data Entry | Duplicate active row (Ctrl+D), add row (Ctrl+Shift+Enter), clear rows, and keyboard-driven spreadsheet flow are implemented. Auto-fill next row with previous values is the remaining optional improvement. |
+| Done | Enhanced validation UX | Bonus: Better Validation UX | Row-level backend errors render beside affected cells with destructive styling and "Needs fix" status badge; E2E test verifies duplicate-task 422 errors display beside the task field in both affected rows. |
+| Done | Summary totals | Bonus: Summary Totals | History API returns unpaginated filtered summary totals for total hours plus company, employee, project, task, and date groups; the History page renders expandable grouped sections with icons (Building2, Users, Folder, ClipboardList), top-5 preview, show more/less toggle, and count badges. |
 | Done | History search | Bonus: History Table Improvements | Prefix search across company, employee, project, and task labels through the history API, backed by portable B-tree name indexes. |
 | Done | History sorting | Bonus: History Table Improvements | Sort visible history rows by date, employee, project, task, or hours. |
-| Not Started | History filtering beyond company scope | Bonus: History Table Improvements | Add filters such as employee, project, task, date range. |
+| In Progress | History filtering beyond company scope | Bonus: History Table Improvements | Single search field filters across company, employee, project, and task labels via prefix match; date range filtering remains optional. |
 | Done | History pagination | Bonus: History Table Improvements | History API uses `TimeEntryIndexQuery::jsonPaginate()` with `page` and `per_page`; the History page renders previous/next controls with pagination metadata. |
-| Done | Keyboard shortcuts | Bonus: Keyboard Shortcuts | Header legend documents shortcuts; app supports Alt+N/Alt+H tab switching, Alt+E spreadsheet focus, plus spreadsheet Tab, Shift+Tab, Enter, arrows, picker opening, duplicate row, add row, and submit batch shortcuts. |
-| Not Started | AI-assisted entry | Super Bonus: AI-Assisted Entry | Plain-English input can parse and fill New Entries table. Laravel AI SDK is installed; implementation still needs an agent/tool path and API/frontend integration. |
+| Done | Keyboard shortcuts | Bonus: Keyboard Shortcuts | Header popover legend documents shortcuts; app supports `?` to open shortcut legend, Alt+N/Alt+H tab switching, Alt+E spreadsheet focus, Alt+S history search focus, plus spreadsheet Tab, Shift+Tab, Enter, arrows, picker opening, duplicate row, add row, and submit batch shortcuts. |
+| In Progress | AI-assisted entry | Super Bonus: AI-Assisted Entry | Plain-English input uses Laravel AI structured output to draft spreadsheet rows; rows remain editable and final persistence still goes through the normal batch create action. |
 
 ## Do Not Implement In Slice 1
 

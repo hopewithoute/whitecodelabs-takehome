@@ -44,6 +44,7 @@ This inventory maps the required Laravel + Vue time entry interface to a focused
 | Must | `useCompanyOptions` | Cache employees, projects, and tasks per company. | Avoid repeated dropdown calls. |
 | Must | `useTimeEntries` | Load history, optionally filtered by company. | Uses `filter[company_id]`. |
 | Must | `useBatchSubmit` | Submit `entries[]`, map 422 errors back to row/cell keys. | Depends on row-level keys like `entries.1.project_id`. |
+| Bonus | `useAiTimeEntryDrafts` | Send plain-English prompts to the AI draft endpoint and append returned draft rows. | Draft only; normal batch submit remains the persistence path. |
 | Bonus | `useHistoryFilters` | Search, sort, date range, or extra filters. | Bonus history improvements. |
 
 ### Spreadsheet Entry Surface
@@ -63,6 +64,7 @@ This inventory maps the required Laravel + Vue time entry interface to a focused
 | Must | `HoursCellEditor` | Numeric hours input, accepts decimals, right-aligned. | Hours entry |
 | Must | `CellErrorText` | Compact row/cell error display from backend and frontend checks. | Better validation UX baseline |
 | Must | `RowStatusCell` | Unsaved, saving, saved, or invalid indicator. | Submit feedback |
+| Bonus | `AiEntryAssistant` | Compact chat-style prompt box that drafts spreadsheet rows from plain English. | AI-assisted entry |
 | Bonus | `RowActionMenu` | Duplicate row, insert below, clear row, remove row. | Faster data entry |
 | Bonus | `PasteHandler` | Future hook for pasting rows from spreadsheet text. | Faster data entry |
 
@@ -122,6 +124,7 @@ Existing dependencies already include `reka-ui`, `class-variance-authority`, `lu
 | `RouteTabs` | `tabs` or existing `RouterLink` styled like tabs | Router state should remain the source of truth. Use shadcn tabs styling only if it does not fight Vue Router. |
 | `ApiErrorBanner` | `alert` | Reserved for non-field errors; field errors stay in cells. |
 | `SpreadsheetToolbar` | `button`, `tooltip`, `separator` | Use lucide icons for add, duplicate, clear, submit, refresh. |
+| `AiEntryAssistant` | `textarea`, `button`, `alert`, `badge` | Draft rows from plain English; keep the component above the spreadsheet body so keyboard users can tab into it naturally. |
 | `TimeEntrySpreadsheet` | `table` plus custom grid/focus behavior | Use table primitives for structure, but keep keyboard navigation in `useSpreadsheetNavigation`. |
 | `SpreadsheetCell` | custom wrapper around `button`/focusable div | Needs roving tabindex, active-cell styling, and `aria-invalid`; shadcn does not provide this behavior directly. |
 | `CompanyCellEditor` | `popover`, `command`, `button` | Combobox over companies, includes current row company selection. |
@@ -146,8 +149,9 @@ Install only the primitives needed by the next frontend slice, not every possibl
 | 1 | `button`, `input`, `badge`, `alert`, `table` | App shell polish, static spreadsheet, history table, visible validation states. |
 | 2 | `popover`, `command` | Keyboard-searchable company, employee, project, and task pickers. |
 | 3 | `tooltip`, `separator` | Icon-only toolbar and compact spreadsheet controls. |
-| 4 | `dropdown-menu` | Bonus row action menu. |
-| 5 | `tabs` | Optional replacement for current RouterLink tab styling if it improves consistency. |
+| 4 | `textarea` | AI-assisted entry prompt. |
+| 5 | `dropdown-menu` | Bonus row action menu. |
+| 6 | `tabs` | Optional replacement for current RouterLink tab styling if it improves consistency. |
 
 ## Data Contracts Used By Components
 

@@ -106,16 +106,23 @@ The New Entries page uses a spreadsheet-style grid backed by real API option dat
 
 Keyboard support:
 
-- `Alt+N`: switch to New Entries.
-- `Alt+H`: switch to History.
-- `Alt+E`: switch to New Entries and focus the first spreadsheet cell.
-- `Tab` / `Shift+Tab`: move across cells.
-- `Enter`: move down in normal cells.
-- `Enter`, `Space`, or `F2`: open select and date cells.
-- Arrow keys: move through spreadsheet cells and calendar dates.
-- `Ctrl/Cmd+Enter`: submit the batch.
-- `Ctrl/Cmd+Shift+Enter`: add a row and focus the new row.
-- `Ctrl/Cmd+D`: duplicate the active row and focus the copied row's hours cell.
+| Shortcut | Description |
+| --- | --- |
+| `Alt+N` | Switch to New Entries |
+| `Alt+H` | Switch to History |
+| `Alt+E` | Switch to Spreadsheet and focus the first cell |
+| `Alt+S` | Focus the search field on the history page |
+| `?` | Open keyboard shortcut legend |
+| `Ctrl/Cmd+Enter` | Submit the current batch of entries |
+| `Ctrl/Cmd+D` | Duplicate the active row |
+| `Ctrl/Cmd+Shift+Enter` | Add a row and focus the new row |
+| Arrow keys `← → ↑ ↓` | Move between spreadsheet cells |
+| `Tab` / `Shift+Tab` | Next / previous cell, wraps across rows |
+| `Enter` | Confirm and move to the cell below |
+| `Esc` | Cancel the current cell edit |
+| `Enter`, `Space`, `F2` | Open select and date cells |
+
+The full shortcut list is also available in-app via the keyboard icon next to the company dropdown.
 
 After selecting a date, the cell stores `YYYY-MM-DD` for the API but renders a human-friendly label such as `Jan 15, 2026`.
 
@@ -123,7 +130,29 @@ The History page includes paginated API-backed search across company, employee, 
 
 ## AI Preparation
 
-The Laravel AI SDK is installed and configured through `config/ai.php`. The default provider is OpenAI; set `OPENAI_API_KEY` in `.env` before building the AI-assisted entry bonus.
+The Laravel AI SDK is installed and configured through `config/ai.php`. Set the API key for the configured provider before using AI-assisted entry.
+
+The New Entries page includes an AI-assisted draft box. It parses plain-English notes into spreadsheet rows and does not save anything by itself. The generated rows are reviewed in the normal spreadsheet and submitted through the existing batch create endpoint, so the same backend invariant validation still applies.
+
+The time-entry draft agent provider and model are env-selectable:
+
+```env
+AI_TIME_ENTRY_DRAFT_PROVIDER=deepseek
+AI_TIME_ENTRY_DRAFT_MODEL=
+AI_TIME_ENTRY_DRAFT_REAL_TEST=false
+```
+
+`AI_TIME_ENTRY_DRAFT_PROVIDER` may be any Laravel AI text provider configured in `config/ai.php`. The app defaults this agent to `deepseek` because the local AI gateway is compatible with Laravel AI's DeepSeek adapter, which calls `chat/completions`. `AI_TIME_ENTRY_DRAFT_MODEL` can be any model name accepted by that provider or local gateway. If the model is blank, Laravel AI uses the selected provider's default text model.
+
+The installed Laravel AI OpenAI adapter calls OpenAI's `responses` endpoint. For OpenAI-compatible local gateways that expect the older chat-completion style API, use `AI_TIME_ENTRY_DRAFT_PROVIDER=deepseek` and point `DEEPSEEK_URL` / `DEEPSEEK_API_KEY` at the gateway.
+
+The real provider test is opt-in to avoid accidental external calls:
+
+```bash
+AI_TIME_ENTRY_DRAFT_REAL_TEST=true php artisan test --filter=test_ai_time_entry_draft_endpoint_can_call_real_provider
+```
+
+Laravel AI supports route-level SSE by returning an agent `stream()` response directly from a route. For this app, the first AI slice intentionally uses structured output instead of token streaming because the useful result is a finite set of spreadsheet rows. SSE can be added later for a conversational assistant, but it is not necessary for draft-row generation.
 
 Laravel Debugbar is installed as a dev dependency for local query and request inspection. Set `DEBUGBAR_ENABLED=true` in `.env` when local debugging is needed.
 
