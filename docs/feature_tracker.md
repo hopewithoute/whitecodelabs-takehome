@@ -6,7 +6,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 
 | Status | Slice | Scope | Next Step |
 | --- | --- | --- | --- |
-| In Progress | Spreadsheet Data Wiring | Company-scoped spreadsheet editors and batch submit are wired to real seeded API data. | Add History API binding and polish refresh/confirmation behavior after submit. |
+| In Progress | Invariant Validation And Bonus UX | Must-have create/view flow is API-backed, tested, and usable with real seeded data. | Add frontend regression coverage for backend invariant errors, then start the highest-value bonus work. |
 
 ## Must Have: Project Foundation
 
@@ -36,6 +36,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | `time_entries` migration | Required Database Structure | Stores company, employee, project, task, entry date, hours, and timestamps. |
 | Done | Foreign key constraints | Required Relationships | All required references use foreign UUID constraints; cross-table company consistency remains a validation invariant. |
 | Done | Useful indexes | Performance Considerations | Includes indexes for company/date, employee/date, project/date, task, and option lookups. |
+| Done | Exact duplicate task guard | Business Rules | Unique index blocks duplicate company/employee/project/task/date rows while allowing different tasks on the same employee/project/date. |
 | Done | Hours storage precision | Goal | Uses `decimal(5, 2)` for partial hours; positive value enforcement belongs to backend validation. |
 
 ## Must Have: Models And Relationships
@@ -46,7 +47,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | `Employee` model | Required Generation | Uses UUIDs and exposes companies, projects, and time entries relationships. |
 | Done | `Project` model | Required Generation | Uses UUIDs and exposes company, employees, and time entries relationships. |
 | Done | `Task` model | Required Generation | Uses UUIDs and exposes company and time entries relationships. |
-| Done | `TimeEntry` model | Required Generation | Uses UUIDs, casts entry date/hours, appends display fields, and exposes company, employee, project, and task relationships. |
+| Done | `TimeEntry` model | Required Generation | Uses UUIDs, model casts, appended display fields, and exposes company, employee, project, and task relationships. |
 | Done | Company has many employees | Required Relationships | Implemented through `company_employee` with `Company::addEmployee()`. |
 | Done | Employee belongs to multiple companies | Required Relationships | Employee can be attached to more than one company. |
 | Done | Company has many projects | Required Relationships | Project belongs to one company. |
@@ -97,8 +98,9 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | Project company validation | Goal | API rejects project outside selected company. |
 | Done | Task company validation | Goal | API rejects task outside selected company. |
 | Done | Employee project assignment validation | Required Relationships | API rejects project not assigned to selected employee. |
-| Done | One project per employee per date validation | Business Rules | API rejects different projects for same employee/date. |
-| Done | Multiple tasks same project/date allowed | Business Rules | API allows same employee/date/project with multiple tasks. |
+| Done | Company-scoped one project per employee per date validation | Business Rules | API rejects different projects for the same company/employee/date while allowing shared employees to work under different companies on that date. |
+| Done | Multiple distinct tasks same project/date allowed | Business Rules | API allows same employee/date/project with different tasks. |
+| Done | Duplicate same-task validation | Business Rules | API rejects duplicate company/employee/date/project/task rows within a submitted batch and against existing entries. |
 | Done | Batch internal conflict validation | Business Rules | API rejects conflicting projects within the submitted batch. |
 | Done | Existing data conflict validation | Business Rules | API rejects conflicts with already-saved entries. |
 | Done | Transactional batch creation | Business Rules | A batch saves atomically; invalid batch persists nothing. |
@@ -116,7 +118,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | All default option | Interface Requirements | Default scope is `All companies`. |
 | Done | Route-backed tab navigation | Interface Requirements | New Entries and History appear as two tabs. |
 | Done | Scope state shared across views | Interface Requirements | Company selection is owned by `App.vue` and passed into New Entries and History route views. |
-| In Progress | Clean usable visual design | UX / Design Expectations | Dark Linear-inspired shell, branded primitives, and dense table surfaces are in place; final polish continues with API-backed cell editors. |
+| Done | Clean usable visual design | UX / Design Expectations | Dark Linear-inspired shell, branded primitives, dense spreadsheet surfaces, keyboard pickers, validation states, and history states are in place. |
 
 ## Must Have: New Entries Frontend
 
@@ -146,7 +148,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | History core columns | History Tab | Shows Company, Date, Employee, Project, Task, Hours. |
 | Done | All-company history | Interface Requirements | Shows entries across all companies when scope is All. |
 | Done | Company-filtered history | Interface Requirements | Shows only selected company when scope is specific. |
-| Not Started | Refresh after submit | New Entries Tab, History Tab | Newly saved entries appear in History. |
+| Done | Refresh after submit | New Entries Tab, History Tab | Newly saved entries appear in History after batch submit. |
 | Done | Empty state | UX / Design Expectations | Clear display when no entries exist for the current scope. |
 
 ## Must Have: Tests
@@ -162,26 +164,31 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | History API test | History Tab | Endpoint returns saved entries with required related labels. |
 | Done | Company-filtered history API test | Interface Requirements | Endpoint respects specific company filter. |
 | Done | Valid batch create API test | Business Rules | Valid batch persists and returns created resources. |
-| Done | Multiple tasks same project/date test | Business Rules | Same employee/date/project with different tasks is accepted. |
+| Done | Multiple distinct tasks same project/date test | Business Rules | Same employee/date/project with different tasks is accepted. |
+| Done | Duplicate same-task invariant tests | Business Rules | Duplicate employee/date/project/task rows are rejected within a batch and against existing entries. |
 | Done | Invalid employee/company test | Goal | API rejects employee outside company. |
 | Done | Invalid project/company test | Goal | API rejects project outside company. |
 | Done | Invalid task/company test | Goal | API rejects task outside company. |
 | Done | Invalid employee/project assignment test | Required Relationships | API rejects unassigned project for employee. |
 | Done | One-project-per-day conflict test | Business Rules | API rejects different project for same employee/date. |
 | Done | Invalid hours/date tests | Goal | API rejects invalid hours and dates. |
-| Not Started | Optional frontend tests | Testing Decisions | Only required if a frontend test setup is added. |
+| Done | Spreadsheet keyboard E2E tests | Testing Decisions | Playwright covers keyboard commit flow, popover calendar navigation, and tab exit from an open picker. |
+| Done | History E2E tests | Testing Decisions | Playwright covers API-backed history listing, global company scope filtering, and refresh after a new submit. |
+| Not Started | Frontend invariant validation E2E tests | Testing Decisions | Now that Playwright is configured, add a focused test that backend 422 invariant errors render beside the affected spreadsheet row fields. |
 
 ## Must Have: Documentation And Submission
 
 | Status | Feature | Source Requirement | Acceptance Notes |
 | --- | --- | --- | --- |
-| Not Started | README setup commands | Submission Requirements | Documents composer/npm/env/key/migrate/seed/dev or build commands. |
-| Not Started | README seed data notes | Submission Requirements | Explains demo companies, employees, projects, tasks, assignments. |
-| Not Started | README business rules | Evaluation Criteria | Documents validation and one-project-per-day rule. |
-| Not Started | README performance notes | Performance Considerations | Documents caching/loading/index decisions. |
+| Done | README setup commands | Submission Requirements | Documents composer/npm/env/key/migrate/seed/dev, build, and test commands. |
+| Done | README seed data notes | Submission Requirements | Explains demo companies, shared employee behavior, projects, tasks, assignments, and seeded history. |
+| Done | README business rules | Evaluation Criteria | Documents relationship validation, company-scoped one-project-per-date, multiple distinct tasks, and duplicate-task rejection. |
+| Done | README performance notes | Performance Considerations | Documents scoped option loading, frontend memoization, query builders, indexes, and pagination tradeoff. |
 | Done | API documentation | API Requirements, Submission Quality | Scramble is installed and exposes interactive API documentation at `/docs/api` plus OpenAPI JSON at `/docs/api.json`. |
 | Done | Frontend component inventory | Interface Requirements, UX / Design Expectations | `docs/frontend_component_inventory.md` maps the required and bonus frontend components with spreadsheet-style keyboard entry as the main interaction. |
-| Not Started | README AI usage note | Submission Requirements | Points to AI conversation export. |
+| Done | AI implementation package preparation | Super Bonus: AI-Assisted Entry | `laravel/ai` is installed with config, stubs, and conversation-store migration; `.env.example` includes the OpenAI provider placeholder. |
+| Done | Local debug tooling | Development Quality | Laravel Debugbar is installed as a dev dependency with published config and `.env.example` toggle. |
+| Done | README AI usage note | Submission Requirements | Points to the expected `docs/ai-conversation.json` export path. |
 | Not Started | AI conversation JSON export | Submission Requirements | Include JSON export, preferably `docs/ai-conversation.json`. |
 | Not Started | GitHub-ready repository | Submission Requirements | Repo contains backend, frontend, migrations, seeders, endpoints, README, AI export. |
 
@@ -189,16 +196,16 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 
 | Status | Feature | Source Requirement | Acceptance Notes |
 | --- | --- | --- | --- |
-| Deferred | Edit existing entries | Bonus: Edit Existing Entries | Allow editing entries from History. |
-| Deferred | Faster data entry helpers | Bonus: Faster Data Entry | Duplicate row, reuse previous values, or similar speed improvements. |
-| Deferred | Enhanced validation UX | Bonus: Better Validation UX | More polished row-level and field-level backend validation display. |
-| Deferred | Summary totals | Bonus: Summary Totals | Totals by employee, project, task, date, company, or useful combination. |
-| Deferred | History search | Bonus: History Table Improvements | Search across history entries. |
-| Deferred | History sorting | Bonus: History Table Improvements | Sort history by date, employee, company, project, task, or hours. |
-| Deferred | History filtering beyond company scope | Bonus: History Table Improvements | Add filters such as employee, project, task, date range. |
-| Deferred | History pagination | Bonus: History Table Improvements | Paginate history for larger datasets. |
-| Deferred | Keyboard shortcuts | Bonus: Keyboard Shortcuts | Add thoughtful shortcuts beyond standard Tab navigation. |
-| Deferred | AI-assisted entry | Super Bonus: AI-Assisted Entry | Plain-English input can parse and fill New Entries table. Requires API key if implemented with external AI. |
+| Done | Edit existing entries | Bonus: Edit Existing Entries | History rows expose an edit action backed by `PATCH /api/v1/time-entries/{timeEntry}`; updates reuse DTO/action flow and backend invariants. |
+| In Progress | Faster data entry helpers | Bonus: Faster Data Entry | Duplicate active row exists; reuse previous values and insert/clear row actions remain optional. |
+| In Progress | Enhanced validation UX | Bonus: Better Validation UX | Row-level backend errors render beside affected cells; next step is locking invariant-error display with E2E coverage and polishing conflict messages if needed. |
+| Done | Summary totals | Bonus: Summary Totals | History API returns unpaginated filtered summary totals for total hours plus company, employee, project, task, and date groups; the History page renders the main grouped totals. |
+| Done | History search | Bonus: History Table Improvements | Prefix search across company, employee, project, and task labels through the history API, backed by portable B-tree name indexes. |
+| Done | History sorting | Bonus: History Table Improvements | Sort visible history rows by date, employee, project, task, or hours. |
+| Not Started | History filtering beyond company scope | Bonus: History Table Improvements | Add filters such as employee, project, task, date range. |
+| Done | History pagination | Bonus: History Table Improvements | History API uses `TimeEntryIndexQuery::jsonPaginate()` with `page` and `per_page`; the History page renders previous/next controls with pagination metadata. |
+| Done | Keyboard shortcuts | Bonus: Keyboard Shortcuts | Header legend documents shortcuts; app supports Alt+N/Alt+H tab switching, Alt+E spreadsheet focus, plus spreadsheet Tab, Shift+Tab, Enter, arrows, picker opening, duplicate row, add row, and submit batch shortcuts. |
+| Not Started | AI-assisted entry | Super Bonus: AI-Assisted Entry | Plain-English input can parse and fill New Entries table. Laravel AI SDK is installed; implementation still needs an agent/tool path and API/frontend integration. |
 
 ## Do Not Implement In Slice 1
 

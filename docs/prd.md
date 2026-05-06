@@ -181,7 +181,9 @@ Suggested constraints:
 Important business-rule note:
 
 - Do not add a simple unique constraint on `employee_id`, `entry_date`, because that would incorrectly block multiple tasks on the same project/date.
-- A database-level unique constraint for "one project per employee per date" is not straightforward while also allowing multiple task rows. Enforce this invariant in backend validation inside a transaction. If using a database that supports advanced constraints, this can be strengthened later with a generated key or separate daily assignment table.
+- The one-project-per-date rule is scoped by company. A shared employee may work for different companies on the same date, but within one company that employee may only have one project for that date.
+- A unique constraint on `company_id`, `employee_id`, `project_id`, `task_id`, and `entry_date` is valid because it blocks exact duplicate task rows while still allowing different tasks for the same employee/project/date.
+- A database-level unique constraint for company-scoped "one project per employee per date" is not straightforward while also allowing multiple task rows. Enforce this invariant in backend validation inside a transaction. If using a database that supports advanced constraints, this can be strengthened later with a generated key or separate daily assignment table.
 
 ## System Invariants
 
@@ -207,14 +209,17 @@ These invariants must hold after every successful API write.
 18. A time entry's task must belong to the time entry's company.
 19. A time entry's employee must be assigned to the time entry's project.
 20. The employee-project assignment must be for the same company as the time entry.
-21. An employee may have multiple time entries on the same date only when all those entries use the same project.
-22. An employee may have multiple time entries on the same date and same project across different tasks.
-23. A submitted batch must not contain two rows where the same employee and date use different projects.
-24. A submitted batch must not create a conflict with existing database entries where the same employee and date already use a different project.
-25. Hours must be greater than zero.
-26. Entry date must be a valid date.
-27. Top-level company scope affects frontend option filtering and history display, but it does not replace backend row-level validation.
-28. Frontend filtering is advisory; backend validation is authoritative.
+21. Within a company, an employee may have multiple time entries on the same date only when all those entries use the same project.
+22. Across different companies, a shared employee may have different projects on the same date.
+23. An employee may have multiple time entries on the same date and same project across different tasks.
+24. An employee may not have duplicate rows for the same company, date, project, and task.
+25. A submitted batch must not contain duplicate rows for the same company, employee, date, project, and task.
+26. A submitted batch must not contain two rows where the same company, employee, and date use different projects.
+27. A submitted batch must not create a conflict with existing database entries where the same company, employee, and date already use a different project.
+28. Hours must be greater than zero.
+29. Entry date must be a valid date.
+30. Top-level company scope affects frontend option filtering and history display, but it does not replace backend row-level validation.
+31. Frontend filtering is advisory; backend validation is authoritative.
 
 ## API Contract
 
