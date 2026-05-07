@@ -19,7 +19,6 @@ Laravel 13 API with a Vue 3 Router SPA for creating and viewing employee time en
 
 - Spreadsheet-style batch entry with company, date, employee, project, task, and hours fields.
 - Company-scoped employee, project, and task dropdowns backed by API endpoints.
-- Employee-filtered project options through `filter[employee_id]`.
 - Backend validation for relationship rules and one-project-per-employee-per-date invariants.
 - History table with company scope, search, sorting, pagination, summary totals, and edit actions.
 - Keyboard-first workflow with shortcut legend, row duplication, row deletion, and batch submit shortcuts.
