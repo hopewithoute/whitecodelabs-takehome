@@ -6,7 +6,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 
 | Status | Slice | Scope | Next Step |
 | --- | --- | --- | --- |
-| In Progress | AI-Assisted Entry Bonus | Must-have create/view flow is API-backed, tested, and usable with real seeded data. | Remaining: polish AI-assisted draft behavior, reuse-previous-values auto-fill, optional date-range history filtering, and AI conversation export. |
+| Done | Submission Wrap-up | Must-have create/view flow, selected bonus features, documentation, and AI chat log exports are included. | Final sanity checks passed for backend tests, frontend lint/build, E2E coverage, and formatting. |
 
 ## Must Have: Project Foundation
 
@@ -83,7 +83,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | Company-filtered history query | Interface Requirements | History supports All and specific company scope through `filter[company_id]`. |
 | Done | `POST /api/v1/time-entries` | New Entries Tab | Accepts a batch of entries and persists valid rows through Spatie Data DTO validation and action-based transactional creation. |
 | Done | API Resources | Boilerplate Pattern | Responses use consistent JSON resource shapes for companies, employees, projects, tasks, and time entries. |
-| In Progress | `POST /api/v1/ai/time-entry-drafts` | Super Bonus: AI-Assisted Entry | Parses plain-English notes into spreadsheet-ready draft rows without persisting; agent provider/model are env-selectable, defaulting to the DeepSeek adapter for local gateway compatibility. |
+| Done | `POST /api/v1/ai/time-entry-drafts` | Super Bonus: AI-Assisted Entry | Parses plain-English notes into spreadsheet-ready draft rows without persisting; returns row-level warnings and field-level review hints; agent provider/model are env-selectable, defaulting to the DeepSeek adapter for local gateway compatibility. |
 | Done | Thin API controllers | Boilerplate Pattern | Controllers orchestrate resources, read-side services, and query builders only. |
 | Done | Query builders where useful | Boilerplate Pattern | History and filtered project endpoints use Spatie index query builders to keep filter, sort, and eager-loading logic out of controllers. |
 | Done | Reference option response caching | Performance Considerations | Company, employee, project, task, and employee-filtered project option reads use versioned cache keys; relevant write actions invalidate the affected company or company list. |
@@ -131,6 +131,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | Editable table | New Entries Tab | Each row represents one new time entry with selectable company/employee/project/task, date input, and hours input. |
 | Done | Required field order | New Entries Tab | Columns are Company, Date, Employee, Project, Task, Hours. |
 | Done | Add row control | New Entries Tab | User can add multiple rows before submitting. |
+| Done | Delete active row control | Bonus: Faster Data Entry | User can delete the active row from the toolbar or with `Ctrl/Cmd+Shift+Backspace`; focus moves to the nearest remaining row. |
 | Done | Batch submit control | New Entries Tab | Sends non-empty rows to `POST /api/v1/time-entries`. |
 | Done | Company-scoped employee loading | New Entries Tab | Employee dropdown depends on row company. |
 | Done | Company-scoped project loading | New Entries Tab | Project dropdown depends on row company. |
@@ -140,6 +141,7 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | Keyboard-friendly tab flow | UX / Design Expectations | User can fill rows efficiently with Tab and open select/date cells from keyboard. |
 | Done | Frontend invalid-combination prevention | Goal | UI only offers company-scoped employees/projects/tasks and employee-assigned project options. |
 | Done | Row-level validation display | Bonus / UX Baseline | Backend validation errors are remapped to original row indexes and shown beside affected fields. |
+| Done | AI draft review warnings | Super Bonus: AI-Assisted Entry | Draft rows can carry field-specific warnings under the relevant cells; editing a field clears that field's draft warning and marks unresolved rows as `Review`. |
 | Done | Successful submit state | New Entries Tab | Saved rows reset after success and the spreadsheet shows a compact saved confirmation. |
 
 ## Must Have: History Frontend
@@ -177,6 +179,9 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | Spreadsheet keyboard E2E tests | Testing Decisions | Playwright covers keyboard commit flow, popover calendar navigation, and tab exit from an open picker. |
 | Done | History E2E tests | Testing Decisions | Playwright covers API-backed history listing, global company scope filtering, and refresh after a new submit. |
 | Done | Frontend invariant validation E2E tests | Testing Decisions | Playwright submits duplicate task rows and verifies the backend 422 invariant error renders beside the affected task field in both rows. |
+| Done | Reference option cache invalidation tests | Performance Considerations | Feature tests prove cached company, employee, project, task, and employee-filtered project option responses are invalidated through write actions. |
+| Done | AI draft warning tests | Super Bonus: AI-Assisted Entry | Feature tests assert successful drafts return empty field warnings and unresolved drafts map warnings to the expected spreadsheet fields. |
+| Done | Row delete keyboard E2E test | Bonus: Keyboard Shortcuts | Playwright verifies `Ctrl+Shift+Backspace` deletes the active row and preserves keyboard focus on the spreadsheet. |
 
 ## Must Have: Documentation And Submission
 
@@ -191,25 +196,25 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Done | Frontend component inventory | Interface Requirements, UX / Design Expectations | `docs/frontend_component_inventory.md` maps the required and bonus frontend components with spreadsheet-style keyboard entry as the main interaction. |
 | Done | AI implementation package preparation | Super Bonus: AI-Assisted Entry | `laravel/ai` is installed with config, stubs, and conversation-store migration; `.env.example` includes the OpenAI provider placeholder. |
 | Done | Local debug tooling | Development Quality | Laravel Debugbar is installed as a dev dependency with published config and `.env.example` toggle. |
-| Done | README AI usage note | Submission Requirements | Points to the expected `docs/ai-conversation.json` export path. |
-| In Progress | README AI-assisted entry notes | Super Bonus: AI-Assisted Entry | Documents structured draft-row generation, env-selectable provider/model settings, local-gateway DeepSeek adapter compatibility, and the SSE streaming decision for Laravel AI. |
-| Not Started | AI conversation JSON export | Submission Requirements | Include JSON export, preferably `docs/ai-conversation.json`. |
-| Not Started | GitHub-ready repository | Submission Requirements | Repo contains backend, frontend, migrations, seeders, endpoints, README, AI export. |
+| Done | README AI usage note | Submission Requirements | Points to the combined `docs/ai-conversation.json` export and source `docs/ai_chat_log/` JSONL session exports. |
+| Done | README AI-assisted entry notes | Super Bonus: AI-Assisted Entry | Documents structured draft-row generation, env-selectable provider/model settings, local-gateway DeepSeek adapter compatibility, and the SSE streaming decision for Laravel AI. |
+| Done | AI chat log export | Submission Requirements | Combined JSON export is included at `docs/ai-conversation.json`; source JSONL session exports are included under `docs/ai_chat_log/`. |
+| Done | GitHub-ready repository | Submission Requirements | Repo contains backend, frontend, migrations, seeders, endpoints, README, manual testing guide, combined AI JSON export, and source AI chat log exports; final sanity checks passed. |
 
 ## Bonus
 
 | Status | Feature | Source Requirement | Acceptance Notes |
 | --- | --- | --- | --- |
 | Done | Edit existing entries | Bonus: Edit Existing Entries | History rows expose an edit action backed by `PATCH /api/v1/time-entries/{timeEntry}`; updates reuse DTO/action flow and backend invariants. |
-| Done | Faster data entry helpers | Bonus: Faster Data Entry | Duplicate active row (Ctrl+D), add row (Ctrl+Shift+Enter), clear rows, and keyboard-driven spreadsheet flow are implemented. Auto-fill next row with previous values is the remaining optional improvement. |
-| Done | Enhanced validation UX | Bonus: Better Validation UX | Row-level backend errors render beside affected cells with destructive styling and "Needs fix" status badge; E2E test verifies duplicate-task 422 errors display beside the task field in both affected rows. |
+| Done | Faster data entry helpers | Bonus: Faster Data Entry | Duplicate active row (`Ctrl/Cmd+D`), add row (`Ctrl/Cmd+Shift+Enter`), delete active row (`Ctrl/Cmd+Shift+Backspace`), clear rows, and keyboard-driven spreadsheet flow are implemented. Reuse-previous-values auto-fill remains a deferred optional enhancement. |
+| Done | Enhanced validation UX | Bonus: Better Validation UX | Row-level backend errors render beside affected cells with destructive styling and `Needs fix` status; AI draft warnings render beside relevant cells with `Review` status; E2E test verifies duplicate-task 422 errors display beside the task field in both affected rows. |
 | Done | Summary totals | Bonus: Summary Totals | History API returns unpaginated filtered summary totals for total hours plus company, employee, project, task, and date groups; the History page renders expandable grouped sections with icons (Building2, Users, Folder, ClipboardList), top-5 preview, show more/less toggle, and count badges. |
 | Done | History search | Bonus: History Table Improvements | Prefix search across company, employee, project, and task labels through the history API, backed by portable B-tree name indexes. |
 | Done | History sorting | Bonus: History Table Improvements | Sort visible history rows by date, employee, project, task, or hours. |
-| In Progress | History filtering beyond company scope | Bonus: History Table Improvements | Single search field filters across company, employee, project, and task labels via prefix match; date range filtering remains optional. |
+| Done | History filtering beyond company scope | Bonus: History Table Improvements | Single search field filters across company, employee, project, and task labels via prefix match; date range filtering remains optional. |
 | Done | History pagination | Bonus: History Table Improvements | History API uses `TimeEntryIndexQuery::jsonPaginate()` with `page` and `per_page`; the History page renders previous/next controls with pagination metadata. |
-| Done | Keyboard shortcuts | Bonus: Keyboard Shortcuts | Header popover legend documents shortcuts; app supports `?` to open shortcut legend, Alt+N/Alt+H tab switching, Alt+E spreadsheet focus, Alt+S history search focus, plus spreadsheet Tab, Shift+Tab, Enter, arrows, picker opening, duplicate row, add row, and submit batch shortcuts. |
-| In Progress | AI-assisted entry | Super Bonus: AI-Assisted Entry | Plain-English input uses Laravel AI structured output to draft spreadsheet rows; rows remain editable and final persistence still goes through the normal batch create action. |
+| Done | Keyboard shortcuts | Bonus: Keyboard Shortcuts | Header popover legend documents shortcuts; app supports `Shift+/` to open shortcut legend, Alt+N/Alt+H tab switching, Alt+E spreadsheet focus, Alt+S history search focus, plus spreadsheet Tab, Shift+Tab, Enter, arrows, picker opening, duplicate row, add row, delete row, and submit batch shortcuts. |
+| Done | AI-assisted entry | Super Bonus: AI-Assisted Entry | Plain-English input uses Laravel AI structured output to draft spreadsheet rows with field-specific review warnings; rows remain editable and final persistence still goes through the normal batch create action. |
 
 ## Do Not Implement In Slice 1
 
@@ -220,6 +225,6 @@ Use this matrix to track progress against the exercise spec. Status values shoul
 | Deferred | Inertia pages or Inertia form handling | Project direction is Laravel API with Vue 3 Router. |
 | Deferred | Production-grade reporting | Spec asks for simple create/view interface, not reporting product. |
 | Deferred | Background jobs | No async workflow is required for Slice 1. |
-| Deferred | External AI integration | Super bonus only; should not block must-have app. |
+| Deferred | Production conversational AI streaming | Draft-row AI is implemented; a fully conversational streaming assistant remains outside the required slice. |
 | Deferred | Complex caching infrastructure | Performance should be considered, but over-engineering is unnecessary. |
 | Deferred | Multi-tenant workspace/auth boilerplate | Companies are domain data for time entries, not authenticated tenant context in this exercise. |

@@ -15,6 +15,17 @@ Laravel 13 API with a Vue 3 Router SPA for creating and viewing employee time en
 - shadcn-vue primitives with CVA styling
 - Playwright for frontend regression coverage
 
+## Feature Summary
+
+- Spreadsheet-style batch entry with company, date, employee, project, task, and hours fields.
+- Company-scoped employee, project, and task dropdowns backed by API endpoints.
+- Employee-filtered project options through `filter[employee_id]`.
+- Backend validation for relationship rules and one-project-per-employee-per-date invariants.
+- History table with company scope, search, sorting, pagination, summary totals, and edit actions.
+- Keyboard-first workflow with shortcut legend, row duplication, row deletion, and batch submit shortcuts.
+- AI-assisted draft rows from plain-English input, with field-level review warnings before normal submission.
+- Interactive API docs through Scramble.
+
 ## Setup
 
 ```bash
@@ -27,19 +38,38 @@ php artisan migrate --seed
 npm run build
 ```
 
-Run the Laravel app:
+## Quick Start
+
+```bash
+composer run dev
+```
+
+This starts the Laravel server, queue listener, log tail, and Vite dev server together.
+
+If you prefer separate terminals:
 
 ```bash
 php artisan serve
-```
-
-For frontend development in a second terminal:
-
-```bash
 npm run dev
 ```
 
 Open the app at the Laravel URL, usually `http://127.0.0.1:8000`.
+
+## Environment
+
+Key local variables from `.env.example`:
+
+| Variable | Purpose |
+| --- | --- |
+| `APP_URL` | Base URL used by Laravel and Playwright when `PLAYWRIGHT_BASE_URL` is not set. |
+| `DB_CONNECTION=sqlite` | Default local database driver. |
+| `CACHE_STORE=database` | Stores versioned reference-option cache keys. |
+| `DEBUGBAR_ENABLED` | Enables Laravel Debugbar locally when set to `true`. |
+| `OPENAI_API_KEY` / `OPENAI_URL` | Optional OpenAI provider credentials. |
+| `DEEPSEEK_API_KEY` / `DEEPSEEK_URL` | Optional DeepSeek or local OpenAI-compatible gateway credentials. |
+| `AI_TIME_ENTRY_DRAFT_PROVIDER` | Provider used by AI-assisted draft generation; defaults to `deepseek`. |
+| `AI_TIME_ENTRY_DRAFT_MODEL` | Optional model override for AI-assisted draft generation. |
+| `AI_TIME_ENTRY_DRAFT_REAL_TEST` | Opt-in flag for the real provider AI test. |
 
 ## Test Commands
 
@@ -51,7 +81,15 @@ npm run test:e2e
 
 Playwright derives its base URL from `PLAYWRIGHT_BASE_URL`, `APP_URL`, or `.env`; it defaults to `http://127.0.0.1:8000`.
 
-For human QA, use the invariant checklist in [docs/manual_testing_guide.md](docs/manual_testing_guide.md).
+## Manual QA Guide
+
+For human QA, use [docs/manual_testing_guide.md](docs/manual_testing_guide.md). It covers:
+
+- Relationship checks for company-scoped employees, projects, and tasks.
+- Business invariant checks for one-project-per-employee-per-date and multi-task entries.
+- Backend tampering checks for invalid employee/project/task combinations.
+- History search, pagination, totals, and edit behavior.
+- Keyboard-only entry flow and AI-assisted draft checks.
 
 ## API Documentation
 
@@ -114,10 +152,11 @@ Keyboard support:
 | `Alt+H` | Switch to History |
 | `Alt+E` | Switch to Spreadsheet and focus the first cell |
 | `Alt+S` | Focus the search field on the history page |
-| `?` | Open keyboard shortcut legend |
+| `Shift+/` | Open keyboard shortcut legend |
 | `Ctrl/Cmd+Enter` | Submit the current batch of entries |
 | `Ctrl/Cmd+D` | Duplicate the active row |
 | `Ctrl/Cmd+Shift+Enter` | Add a row and focus the new row |
+| `Ctrl/Cmd+Shift+Backspace` | Delete the active row |
 | Arrow keys `← → ↑ ↓` | Move between spreadsheet cells |
 | `Tab` / `Shift+Tab` | Next / previous cell, wraps across rows |
 | `Enter` | Confirm and move to the cell below |
@@ -132,11 +171,10 @@ The History page includes paginated API-backed search across company, employee, 
 
 ## AI Preparation
 
-The Laravel AI SDK is installed and configured through `config/ai.php`. Set the API key for the configured provider before using AI-assisted entry.
-
-The New Entries page includes an AI-assisted draft box. It parses plain-English notes into spreadsheet rows and does not save anything by itself. The generated rows are reviewed in the normal spreadsheet and submitted through the existing batch create endpoint, so the same backend invariant validation still applies.
-
-The time-entry draft agent provider and model are env-selectable:
+- The New Entries page includes an AI-assisted draft box that turns plain-English notes into editable spreadsheet rows.
+- Drafting does not save data; final persistence still goes through the normal batch submit and backend validation flow.
+- Example seeded-data prompts and a cURL check live in [docs/ai_test_prompts.md](docs/ai_test_prompts.md).
+- Configure the draft agent with:
 
 ```env
 AI_TIME_ENTRY_DRAFT_PROVIDER=deepseek
@@ -144,46 +182,56 @@ AI_TIME_ENTRY_DRAFT_MODEL=
 AI_TIME_ENTRY_DRAFT_REAL_TEST=false
 ```
 
-`AI_TIME_ENTRY_DRAFT_PROVIDER` may be any Laravel AI text provider configured in `config/ai.php`. The app defaults this agent to `deepseek` because the local AI gateway is compatible with Laravel AI's DeepSeek adapter, which calls `chat/completions`. `AI_TIME_ENTRY_DRAFT_MODEL` can be any model name accepted by that provider or local gateway. If the model is blank, Laravel AI uses the selected provider's default text model.
-
-The installed Laravel AI OpenAI adapter calls OpenAI's `responses` endpoint. For OpenAI-compatible local gateways that expect the older chat-completion style API, use `AI_TIME_ENTRY_DRAFT_PROVIDER=deepseek` and point `DEEPSEEK_URL` / `DEEPSEEK_API_KEY` at the gateway.
-
-The real provider test is opt-in to avoid accidental external calls:
+- The app defaults to `deepseek` because it works with OpenAI-compatible local gateways that use chat-completions style APIs.
+- Real provider tests are opt-in to avoid accidental external calls:
 
 ```bash
 AI_TIME_ENTRY_DRAFT_REAL_TEST=true php artisan test --filter=test_ai_time_entry_draft_endpoint_can_call_real_provider
 ```
 
-Laravel AI supports route-level SSE by returning an agent `stream()` response directly from a route. For this app, the first AI slice intentionally uses structured output instead of token streaming because the useful result is a finite set of spreadsheet rows. SSE can be added later for a conversational assistant, but it is not necessary for draft-row generation.
-
-Laravel Debugbar is installed as a dev dependency for local query and request inspection. Set `DEBUGBAR_ENABLED=true` in `.env` when local debugging is needed.
-
 ## Performance Notes
 
-Which API responses should be cached?
-
-Reference data is the best cache target: companies, company employees, company projects, company tasks, and employee-filtered project options. These records change far less often than time entries and are read repeatedly while entering rows. The app caches those option responses with versioned keys and invalidates them in the relevant write actions, such as company create, employee attach, project create/assignment, and task create. History responses are not cached because they change on every create/update and depend on filters, search, pagination, and summary totals.
-
-Are dropdown options being loaded efficiently?
-
-Option endpoints are company-scoped, so employees, projects, and tasks are not loaded globally into every row. Project options can also be filtered by `filter[employee_id]` to reflect employee assignment. On the frontend, loaded company option buckets and employee-filtered project lists are memoized for the page session, so selecting the same company or employee again does not repeat the same API calls.
-
-Are unnecessary API calls avoided?
-
-The New Entries page loads dependent options lazily: company options are loaded once for the global selector, then row-level employee/project/task options are fetched only after a company is selected. Changing company or employee clears dependent fields instead of validating stale selections with extra calls. History uses debounced search and paginated requests, so typing and page navigation do not fetch the full table repeatedly.
-
-For a larger production frontend, this could be handled more comprehensively with a client-side data cache such as TanStack Query or a similar request cache. That would add shared stale-time, request deduplication, background refresh, and invalidation rules across routes instead of keeping lightweight page-local memoization.
-
-How would this behave with many companies, employees, projects, tasks, and time entries?
-
-The current shape scales reasonably for a take-home app because option reads are scoped and memoized, and history is server-paginated through `TimeEntryIndexQuery::jsonPaginate()`. History uses Spatie Query Builder for `filter[company_id]`, prefix `filter[search]`, sorting, and pagination. Database indexes support the main lookup paths: company/date, employee/date, project/date, task, exact duplicate task guarding, and searchable label names. Search is prefix-based (`term%`) so normal B-tree indexes remain useful across SQLite and MySQL; SQLite FTS5 would be better for true full-text or contains search, but would add virtual tables and sync triggers beyond this slice. Summary totals are calculated from the same filtered query with pagination removed, so totals remain correct across pages, but for very large datasets those summaries would be candidates for caching, async reporting tables, or a dedicated aggregate endpoint.
+- Which API responses should be cached?
+  - Reference option endpoints are cached: companies, company employees, company projects, company tasks, and employee-filtered project options.
+  - Versioned cache keys are invalidated by the relevant write actions.
+  - History responses are not cached because they change after create/update and depend on company scope, search, sorting, pagination, and summary totals.
+- Are dropdown options being loaded efficiently?
+  - Dropdown data is company-scoped and loaded lazily.
+  - Employee, project, and task options are fetched only after a company is selected.
+  - Project options can be filtered by `filter[employee_id]` so users only see projects assigned to the selected employee.
+- Are unnecessary API calls avoided?
+  - The frontend memoizes loaded company option buckets and employee-filtered project lists for the current page session.
+  - History uses debounced search and server pagination to avoid fetching the full table repeatedly.
+- How would this behave with many companies, employees, projects, tasks, and time entries?
+  - History uses Spatie Query Builder filters/sorts and indexes for common lookup paths.
+  - Search uses prefix matching (`term%`) so normal B-tree indexes remain useful across SQLite and MySQL.
+  - For much larger datasets, summary totals would be candidates for caching, async reporting tables, or a dedicated aggregate endpoint.
 
 ## AI Usage Export
 
-The assignment asks for a JSON export of the AI conversation used during development. Add it to:
+The AI chat logs used during development are included at:
 
 ```text
 docs/ai-conversation.json
+docs/ai_chat_log/
 ```
 
-This repository already includes the human-readable planning and decision documents under `docs/`.
+`docs/ai-conversation.json` is the combined JSON export for submission. The `docs/ai_chat_log/` folder also keeps the source JSONL session exports alongside the human-readable planning and decision documents under `docs/`.
+
+## Submission Checklist
+
+Extracted from [docs/main_spec.md](docs/main_spec.md):
+
+- [x] Laravel backend code.
+- [x] Vue 3 frontend code using the Composition API.
+- [x] Migrations for companies, employees, projects, tasks, time entries, and required pivots.
+- [x] Models, relationships, factories, and seeders.
+- [x] API endpoints for company-scoped options, history, create/update time entries, and AI draft rows.
+- [x] New Entries tab with API-backed dependent dropdowns.
+- [x] History tab with clear submitted entry details.
+- [x] Backend validation prevents invalid employee, company, project, task, and assignment combinations.
+- [x] Backend validation enforces one project per employee per company/date.
+- [x] Multiple tasks for the same employee/project/date are supported.
+- [x] Keyboard-friendly data entry and faster-entry shortcuts.
+- [x] README setup and testing instructions.
+- [x] AI chat log export at `docs/ai-conversation.json`, with source JSONL logs under `docs/ai_chat_log/`.
