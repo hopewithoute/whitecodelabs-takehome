@@ -2,6 +2,8 @@
 
 Laravel 13 API with a Vue 3 Router SPA for creating and viewing employee time entries. The app is intentionally small, but the create path enforces the relationship and business-rule invariants on the backend.
 
+![White Code Labs Time Entry screenshot](docs/screenshoot.png)
+
 ## Stack
 
 - Laravel 13
