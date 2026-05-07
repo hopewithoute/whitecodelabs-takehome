@@ -38,7 +38,7 @@ const editorCloseSignal = ref(0);
 
 const rowCount = computed(() => rows.value.length);
 const { activeCell, handleCellKeydown, setActiveCell, setCellRef } = useSpreadsheetNavigation(rowCount, addRow);
-const { loadingOptions, getOptions, handleSelect, ensureCompanyOptions } = useSpreadsheetOptions(
+const { loadingOptions, getOptions, handleSelect, ensureCompanyOptions, ensureEmployeeProjects } = useSpreadsheetOptions(
     companiesRef,
     (message) => { submitError.value = message; },
 );
@@ -213,6 +213,10 @@ async function appendAiDraftRows(draftRows) {
 
     await Promise.all(nextRows.map(async (row) => {
         await ensureCompanyOptions(row.company);
+
+        if (row.employee) {
+            await ensureEmployeeProjects(row.company, row.employee);
+        }
     }));
 
     setActiveCell(existingRows.length, 0, { focus: true });

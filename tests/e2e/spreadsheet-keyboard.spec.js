@@ -150,6 +150,70 @@ test('backend invariant errors render beside the affected row fields', async ({ 
     await expect(secondRow.getByText('This task is already listed')).toBeVisible();
 });
 
+test('AI draft rows preload project options for the resolved employee', async ({ page }) => {
+    const company = await findCompany(page, 'Acme Operations');
+    const employee = await findCompanyEmployee(page, company.id, 'Ben Carter');
+
+    await page.route('**/api/v1/ai/time-entry-drafts', async (route) => {
+        await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                data: {
+                    mode: 'draft',
+                    entries: [
+                        {
+                            company_id: company.id,
+                            entry_date: todayDate,
+                            employee_id: employee.id,
+                            project_id: null,
+                            task_id: null,
+                            hours: '2.00',
+                            warnings: ['Choose a matching project.'],
+                            field_warnings: {
+                                project_id: ['Choose a matching project.'],
+                            },
+                        },
+                    ],
+                },
+            }),
+        });
+    });
+
+    await page.getByPlaceholder('Example: Ava worked 2h').fill('Ben worked 2h on a project.');
+    await page.getByRole('button', { name: 'Draft rows' }).click();
+
+    const firstRow = page.locator('tbody tr').first();
+
+    await expect(firstRow.getByRole('button', { name: 'Ben Carter' })).toBeVisible();
+    await firstRow.getByRole('button', { name: 'Select project' }).click();
+    await expect(page.getByRole('option', { name: 'Website Redesign' })).toBeVisible();
+});
+
+async function findCompany(page, companyName) {
+    const response = await page.request.get('/api/v1/companies');
+    const payload = await response.json();
+    const company = (payload.data ?? []).find((entry) => entry.name === companyName);
+
+    if (!company) {
+        throw new Error(`Company ${companyName} was not found.`);
+    }
+
+    return company;
+}
+
+async function findCompanyEmployee(page, companyId, employeeName) {
+    const response = await page.request.get(`/api/v1/companies/${companyId}/employees`);
+    const payload = await response.json();
+    const employee = (payload.data ?? []).find((entry) => entry.name === employeeName);
+
+    if (!employee) {
+        throw new Error(`Employee ${employeeName} was not found.`);
+    }
+
+    return employee;
+}
+
 async function findAvailableSlot(page) {
     const response = await page.request.get('/api/v1/time-entries?filter[search]=Ben%20Carter&per_page=50');
     const payload = await response.json();
