@@ -206,6 +206,7 @@ AI_TIME_ENTRY_DRAFT_REAL_TEST=true php artisan test --filter=test_ai_time_entry_
 - How would this behave with many companies, employees, projects, tasks, and time entries?
   - History uses Spatie Query Builder filters/sorts and indexes for common lookup paths.
   - Search uses prefix matching (`term%`) so normal B-tree indexes remain useful across SQLite and MySQL.
+  - History sorting is currently client-side for the visible page. Search, company filtering, pagination, and summary totals are API-backed; server-side sorting across the full result set would be the next improvement for larger datasets.
   - For much larger datasets, summary totals would be candidates for caching, async reporting tables, or a dedicated aggregate endpoint.
 
 ## AI Usage Export
@@ -221,18 +222,34 @@ docs/ai_chat_log/
 
 ## Submission Checklist
 
-Extracted from [docs/main_spec.md](docs/main_spec.md):
+Based on [docs/main_spec.md](docs/main_spec.md).
 
-- [x] Laravel backend code.
-- [x] Vue 3 frontend code using the Composition API.
-- [x] Migrations for companies, employees, projects, tasks, time entries, and required pivots.
-- [x] Models, relationships, factories, and seeders.
-- [x] API endpoints for company-scoped options, history, create/update time entries, and AI draft rows.
-- [x] New Entries tab with API-backed dependent dropdowns.
-- [x] History tab with clear submitted entry details.
-- [x] Backend validation prevents invalid employee, company, project, task, and assignment combinations.
-- [x] Backend validation enforces one project per employee per company/date.
-- [x] Multiple tasks for the same employee/project/date are supported.
-- [x] Keyboard-friendly data entry and faster-entry shortcuts.
-- [x] README setup and testing instructions.
-- [x] AI chat log export at `docs/ai-conversation.json`, with source JSONL logs under `docs/ai_chat_log/`.
+Main requested features:
+
+- [x] Laravel backend application.
+- [x] Vue 3 frontend using the Composition API.
+- [x] Database tables for companies, employees, tasks, projects, and time entries.
+- [x] Supporting pivot tables for company employees and employee project assignments.
+- [x] Eloquent models, relationships, factories, and seeders.
+- [x] API endpoints following Laravel REST conventions.
+- [x] Top-level company scope dropdown with All as the default.
+- [x] New Entries tab with a table for company, date, employee, project, task, and hours.
+- [x] Add-row workflow before submitting a batch.
+- [x] API-backed dependent dropdowns for company-scoped employees, projects, and tasks.
+- [x] Backend validation for company, employee, project, task, and assignment relationships.
+- [x] Backend enforcement that an employee can only work on one project per date.
+- [x] Support for multiple tasks on the same employee, project, and date.
+- [x] History tab listing submitted entries with company, date, employee, project, task, and hours.
+- [x] Keyboard-friendly data entry, including Tab navigation.
+- [x] README setup instructions.
+- [x] AI conversation export at `docs/ai-conversation.json`, with source logs under `docs/ai_chat_log/`.
+
+Bonus and super bonus features:
+
+- [x] Edit existing entries from the History tab.
+- [x] Faster data entry through row duplication, row deletion, add-row shortcuts, and batch submit shortcuts.
+- [x] Clear validation UX with row-level and field-level backend errors.
+- [x] Summary totals by employee, project, task, date, and company.
+- [x] History search, sorting, filtering by company scope, and pagination.
+- [x] Keyboard shortcuts for tab switching, spreadsheet focus, row actions, and submit.
+- [x] AI-assisted entry that converts plain-English notes into draft spreadsheet rows.
